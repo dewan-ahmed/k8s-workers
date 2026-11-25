@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/sync-theme.mjs",
+    "predeploy": "node ../../scripts/sync-theme.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },

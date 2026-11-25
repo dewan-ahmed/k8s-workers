@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" fill="none" shape-rendering="crispEdges">
+  <!-- Original block landscape, drawn for k8s.workers.dev. -->
+  <defs>
+    <g id="earth">
+      <path d="m0 20 40-20 40 20-40 20Z" fill="#8bce54"/>
+      <path d="m0 20 40 20v44L0 64Z" fill="#755239"/>
+      <path d="m40 40 40-20v44L40 84Z" fill="#503c2d"/>
+      <path d="m0 20 40 20v12L0 32Z" fill="#509347"/>
+      <path d="m40 40 40-20v12L40 52Z" fill="#347442"/>
+      <path d="m12 45 8 4v8l-8-4Zm16 19 8 4v8l-8-4Z" fill="#956747"/>
+      <path d="m52 55 8-4v8l-8 4Zm16-12 8-4v8l-8 4Z" fill="#3e3028"/>
+      <path d="m16 20 12-6 12 6-12 6Zm32 4 12-6 8 4-12 6Z" fill="#a1dc65"/>
+    </g>
+    <g id="server">
+      <path d="m0 20 40-20 40 20-40 20Z" fill="#9cbbb5"/>
+      <path d="m0 20 40 20v64L0 84Z" fill="#527776"/>
+      <path d="m40 40 40-20v64l-40 20Z" fill="#355754"/>
+      <path d="m8 32 24 12v16L8 48Zm0 24 24 12v16L8 72Z" fill="#203d3b"/>
+      <path d="m12 38 4 2v4l-4-2Zm0 24 4 2v4l-4-2Z" fill="#c5f277"/>
+      <path d="m20 42 8 4v4l-8-4Zm0 24 8 4v4l-8-4Z" fill="#73af7f"/>
+      <path d="m48 52 24-12v4L48 56Zm0 12 24-12v4L48 68Zm0 12 24-12v4L48 80Z" fill="#244440"/>
+      <path d="m24 20 16-8 16 8-16 8Z" fill="#d4e3ce"/>
+    </g>
+  </defs>
+  <path d="M18 63h16V47h40v16h24v16H18Zm260-29h16V18h40v16h32v16h-88Z" fill="#426057"/>
+  <path d="M330 87h24v24h-24Z" fill="#dcebb7"/>
+  <path d="M350 91h4v20h-20v-4h16Z" fill="#a5bf82"/>
+  <path d="M30 126h4v4h-4Zm82-94h4v4h-4Zm133 39h4v4h-4Zm112 70h4v4h-4Z" fill="#abc9a1"/>
+  <path d="m56 236 140-70 144 70-144 44Z" fill="#0e211d"/>
+  <use href="#earth" x="140" y="116"/>
+  <use href="#earth" x="100" y="136"/>
+  <use href="#earth" x="180" y="136"/>
+  <use href="#earth" x="60" y="156"/>
+  <use href="#earth" x="140" y="156"/>
+  <use href="#earth" x="220" y="156"/>
+  <use href="#earth" x="100" y="176"/>
+  <use href="#earth" x="180" y="176"/>
+  <use href="#server" x="140" y="64"/>
+  <path d="M264 147v-20h4v20m-12-6v-8h4v8m12 2v-10h4v10M98 151v-16h4v16m4-4v-8h4v8" stroke="#a2d969" stroke-width="4"/>
+  <path d="M191 41h4v-8h8v-4h8v4h8v8h4v8h-4v8h-8v4h-8v-4h-8v-8h-4Z" fill="#b8ec73"/>
+  <path d="m199 44 5 5 11-12" stroke="#2c5635" stroke-width="4"/>
+</svg>

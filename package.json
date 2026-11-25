@@ -5,6 +5,8 @@
   "workspaces": ["apps/*", "packages/*"],
   "engines": { "node": ">=22" },
   "scripts": {
+    "prepare": "node scripts/sync-theme.mjs",
+    "sync:theme": "node scripts/sync-theme.mjs",
     "dev": "npm run dev --workspace @k8s-workers/deprecations --",
     "deploy": "npm run deploy --workspace @k8s-workers/deprecations --",
     "typecheck": "tsc --noEmit",

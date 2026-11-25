@@ -6,18 +6,24 @@
   <meta name="description" content="Check Kubernetes manifests and Helm charts for API removals before you upgrade.">
   <title>Kubernetes API Deprecations</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/theme/theme.css">
   <script src="/app.js" type="module"></script>
 </head>
 <body>
   <header class="topbar">
     <div class="shell topbar-inner">
       <span class="brand"><span class="brand-icon" aria-hidden="true">✦</span> k8s.workers.dev</span>
+      <nav class="tool-nav" aria-label="Kubernetes tools">
+        <a href="https://deprecations.k8s.workers.dev" aria-current="page"><span>01</span> Deprecations</a>
+        <a href="https://compat.k8s.workers.dev"><span>02</span> Compat</a>
+        <a href="https://schema.k8s.workers.dev"><span>03</span> Schema</a>
+      </nav>
       <a href="https://kubernetes.io/docs/reference/using-api/deprecation-guide/">Migration guide ↗</a>
     </div>
   </header>
   <main class="shell">
     <section class="intro">
-      <p class="eyebrow">01 / UPGRADE TOOLS</p>
+      <p class="eyebrow">YOUR CLUSTER. NEXT LEVEL.</p>
       <h1>Kubernetes API<br><span>deprecations</span></h1>
       <p>Find removed and deprecated APIs before upgrading your cluster. Check manifests, rendered Helm output, or a packaged Helm chart.</p>
     </section>
