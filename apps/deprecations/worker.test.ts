@@ -67,6 +67,23 @@ describe('checker API', () => {
     expect(response.status).toBe(415);
   });
 
+  it.each([
+    ['Manifest exceeds 2 MiB.', 1],
+    ['Manifest request is too large.', 128 * 1024],
+  ])('suggests splitting oversized YAML: %s', async (message, extraBytes) => {
+    const oversized = '#'.repeat(2 * 1024 * 1024 + extraBytes);
+    for (const input of [
+      request('/api/check', { manifest: oversized, targetVersion: '1.25' }),
+      rawRequest('/api/check?targetVersion=1.25', oversized),
+    ]) {
+      const response = await worker.fetch(input, env());
+      expect(response.status).toBe(413);
+      expect(await response.json()).toEqual({
+        error: `${message} Split the YAML at document separators (---) and check each batch separately.`,
+      });
+    }
+  });
+
   it('only emails a server-generated summary and rate-limits repeat recipients', async () => {
     const emailEnv = env();
     const input = { manifest, targetVersion: '1.25', to: 'dev@example.com', text: 'arbitrary mail' };

@@ -46,6 +46,51 @@ items:
     expect(report).toMatchObject({ scannedResources: 1, deprecated: 1 });
     expect(report.warnings).toEqual([expect.stringContaining('document 1: skipped invalid YAML')]);
   });
+
+  it('locates rendered Helm findings and reports incomplete List entries with CRLF input', () => {
+    const input = `---
+# Source: test/charts/dep/templates/jobs.yaml
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: &legacy batch/v1beta1
+    kind: &cron CronJob
+    metadata: &job {name: first, namespace: demo}
+  - apiVersion: *legacy
+    kind: *cron
+    metadata: {name: second, namespace: demo}
+  - apiVersion: *legacy
+    kind: *cron
+    metadata: *job
+  - kind: CronJob
+---
+# Empty document
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+`.replace(/\n/g, '\r\n');
+    const report = makeReport(scanManifest(input), 25, 'manifest');
+    const source = 'test/charts/dep/templates/jobs.yaml';
+    expect(report).toMatchObject({ scannedResources: 4, removed: 4, deprecated: 0 });
+    expect(report.findings).toMatchObject([
+      { source, document: 1, line: 6, name: 'first', namespace: 'demo' },
+      { source, document: 1, line: 9, name: 'second', namespace: 'demo' },
+      { source, document: 1, line: 12, name: 'first', namespace: 'demo' },
+      { source: 'manifest', document: 3, line: 19 },
+    ]);
+    expect(report.warnings).toEqual([`${source}, document 1, line 15: no apiVersion and kind found.`]);
+  });
+
+  it('bounds nested List aliases without expanding the YAML document', () => {
+    const input = `apiVersion: v1
+kind: List
+items: &loop
+  - apiVersion: v1
+    kind: List
+    items: *loop
+`;
+    expect(() => scanManifest(input)).toThrow('Resource list is nested too deeply.');
+  });
 });
 
 describe('chart scans', () => {
