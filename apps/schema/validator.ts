@@ -276,6 +276,12 @@ export class Validator {
   ) {
     const { issues } = result;
     const keys = Object.keys(value);
+    const embedded = schema['x-kubernetes-embedded-resource'];
+    if (embedded) {
+      for (const field of ['apiVersion', 'kind']) {
+        if (!Object.hasOwn(value, field)) add('missing required field', [...path, field]);
+      }
+    }
     if (schema.minProperties !== undefined && keys.length < schema.minProperties) add(`must have at least ${schema.minProperties} fields`);
     if (schema.maxProperties !== undefined && keys.length > schema.maxProperties) add(`must have at most ${schema.maxProperties} fields`);
     for (const field of schema.required ?? []) {
@@ -291,6 +297,10 @@ export class Validator {
     for (const key of keys) {
       if (issues.length >= maxIssues) break;
       this.budget.use(depth);
+      if (embedded && (key === 'apiVersion' || key === 'kind') && (typeof value[key] !== 'string' || value[key] === '')) {
+        add('must be a non-empty string', [...path, key]);
+        continue;
+      }
       const property = properties && Object.hasOwn(properties, key) ? properties[key] : undefined;
       if (property) this.check(value[key], property, [...path, key], result, depth + 1);
       else if (typeof additionalProperties === 'object') this.check(value[key], additionalProperties, [...path, key], result, depth + 1);
