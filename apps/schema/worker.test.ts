@@ -60,6 +60,13 @@ describe('schema validator API', () => {
     expect(response.headers.get('Retry-After')).toBe('60');
   });
 
+  it('returns a bounded error when a manifest needs to be split into smaller batches', async () => {
+    const batch = Array.from({ length: 501 }, (_, i) => manifest.replace('name: app', `name: app-${i}`)).join('---\n');
+    const response = await worker.fetch(post(batch, 'application/yaml', '/api/validate?version=1.30'), env());
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ error: expect.stringContaining('500 documents') });
+  });
+
   it('serves the supported version range', async () => {
     const response = await worker.fetch(new Request(`${url}/api/config`), env());
     expect(await response.json()).toEqual({ minimumMinor: 16, latestMinor: 37 });
