@@ -21,6 +21,7 @@ export interface Schema {
   defaultValue?: unknown;
   crd?: true;
   normalizeCrd?: true;
+  pruneCrdNulls?: true;
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
@@ -108,7 +109,7 @@ export class Validator {
   private normalizeCrd(value: unknown, schema: Schema, depth: number): unknown {
     if (!schema.normalizeCrd) return value;
     this.budget.use(depth);
-    if ((value === undefined || (value === null && !schema.nullable)) && schema.defaultValue !== undefined) {
+    if ((value === undefined || (value === null && schema.pruneCrdNulls && !schema.nullable)) && schema.defaultValue !== undefined) {
       value = schema.defaultValue;
     }
     if (Array.isArray(value)) {
@@ -132,7 +133,7 @@ export class Validator {
     for (const key of keys) {
       const field = object[key];
       const child = Object.hasOwn(properties, key) ? properties[key] : additional;
-      if (field === null && child?.normalizeCrd && !child.nullable && child.defaultValue === undefined) continue;
+      if (field === null && child?.pruneCrdNulls && !child.nullable && child.defaultValue === undefined) continue;
       copy[key] = child ? this.normalizeCrd(field, child, depth + 1) : field;
     }
     for (const key of propertyKeys) {
@@ -318,6 +319,7 @@ const uncheckedStringFormats = new Set([
 interface CrdOptions {
   targetMinor: number;
   defaulting: boolean;
+  betaPruning?: boolean;
 }
 
 export const objectMetaRef = 'io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta';
@@ -359,9 +361,10 @@ export function fromCrdSchema(
     }
     if (source.format === 'int32' && (!schema.type || schema.type === 'integer')) schema.format = 'int32';
   }
-  if (options.defaulting) {
+  if (options.defaulting || options.betaPruning) {
     schema.normalizeCrd = true;
-    if (source.default != null) schema.defaultValue = source.default;
+    if (options.targetMinor >= 20) schema.pruneCrdNulls = true;
+    if (options.defaulting && source.default != null) schema.defaultValue = source.default;
   }
   if (Array.isArray(source['x-kubernetes-validations'])) counter.rules += source['x-kubernetes-validations'].length;
   const convert = (value: unknown) => fromCrdSchema(value, budget, counter, options, depth + 1);
