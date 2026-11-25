@@ -146,6 +146,13 @@ metadata: { name: unknown }
               shade: { type: 'string', not: { anyOf: [{ enum: ['black'] }, { pattern: '^g' }] } },
               endpoint: { type: 'string', oneOf: [{ enum: ['auto'] }, { format: 'ipv4' }, { pattern: '^svc-' }] },
               mode: { type: 'string', pattern: '' },
+              ranges: { type: 'array', items: { type: 'string' } },
+              config: {
+                type: 'object', required: ['mode', 'description'], properties: {
+                  mode: { type: 'string', nullable: true, enum: ['safe'] },
+                  description: { type: 'string', nullable: true },
+                },
+              },
               settings: {
                 type: 'object',
                 properties: { mode: { type: 'string', default: 'safe' } },
@@ -163,9 +170,11 @@ metadata: { name: unknown }
       crd, widget('unlisted-colour', { colour: 'red' }), widget('forbidden-shade', { shade: 'black' }),
       widget('unchecked-colour', { colour: 'blue' }), widget('accepted-colour', { colour: 'green' }),
       widget('unchecked-endpoint', { endpoint: 'auto' }), widget('defaulted-mode', { settings: {} }),
-      widget('empty-pattern', { mode: 'safe' }),
+      widget('empty-pattern', { mode: 'safe' }), widget('invalid-null', { config: { mode: null, description: null } }),
+      widget('valid-null', { config: { mode: 'safe', description: null } }),
+      widget('large-array', { ranges: Array(6500).fill('10.0.0.0/24') }),
     ].map(doc => JSON.stringify(doc)).join('\n---\n'));
-    expect(report).toMatchObject({ valid: 3, invalid: 2, skipped: 3 });
+    expect(report).toMatchObject({ valid: 5, invalid: 3, skipped: 3 });
     expect(report.resources.slice(1)).toMatchObject([
       { status: 'invalid', errors: [{ path: 'spec.colour', message: expect.stringContaining('must be one of') }] },
       { status: 'invalid', errors: [{ path: 'spec.shade', message: 'matches a schema it must not match (not)' }] },
@@ -173,6 +182,9 @@ metadata: { name: unknown }
       { status: 'valid', errors: [] },
       { status: 'skipped', errors: [], notes: expect.arrayContaining([expect.stringContaining('string format this checker does not evaluate')]) },
       { status: 'skipped', errors: [], notes: expect.arrayContaining([expect.stringContaining('depends on an unevaluated pattern')]) },
+      { status: 'valid', errors: [] },
+      { status: 'invalid', errors: [{ path: 'spec.config.mode', message: 'must be one of "safe"; got null' }] },
+      { status: 'valid', errors: [] },
       { status: 'valid', errors: [] },
     ]);
   });
@@ -199,8 +211,24 @@ metadata: { name: unknown }
     expect(evaluate({ format: 'app-defined' })).toBe('valid');
     expect(evaluate({ format: 'k8s-short-name' }, 'green', 34)).toBe('valid');
     expect(evaluate({ format: 'k8s-short-name' }, 'green', 35)).toBe('skipped');
-    expect(evaluate({ format: 'datetime' }, '2025-02-28T12:00:00,5Z')).toBe('skipped');
-    expect(evaluate({ format: 'date-time' }, '2025-02-28T24:00:00Z')).toBe('skipped');
+  });
+
+  it.each(['datetime', 'date-time'])('matches Kubernetes CRD timestamp validation for %s', format => {
+    const budget = new ValidationBudget();
+    const schema = fromCrdSchema({ type: 'string', format }, budget, { rules: 0, patterns: 0 }, { targetMinor: 36, defaulting: true });
+    const validator = new Validator({}, budget);
+    for (const value of ['2025-02-28T12:00:00,5Z', '2024-02-29t23:59:59.123+05:30', '2000-02-29T00:00:00Z']) {
+      expect(validator.validate(value, schema)).toEqual({ issues: [], unchecked: Unchecked.None });
+    }
+    for (const value of ['2025-02-28T24:00:00Z', '2025-02-28T12:60:00Z', '2025-02-28T12:00:60Z',
+      '1900-02-29T00:00:00Z', '2024-04-31T12:00:00Z', '2024-02-29 12:00:00Z']) {
+      expect(validator.validate(value, schema).issues).toEqual([{ path: [], message: expect.stringContaining('Kubernetes date-time') }]);
+    }
+    const alternative = fromCrdSchema({ type: 'string', oneOf: [{ format }, { enum: ['manual'] }] },
+      budget, { rules: 0, patterns: 0 }, { targetMinor: 36, defaulting: true });
+    expect(validator.validate('manual', alternative)).toEqual({ issues: [], unchecked: Unchecked.None });
+    expect(validator.validate('2025-02-28T12:00:00,5Z', alternative)).toEqual({ issues: [], unchecked: Unchecked.None });
+    expect(validator.validate('2025-02-28T24:00:00Z', alternative).issues).not.toHaveLength(0);
   });
 
   it('uses structural defaults in alternative checks without mutating the input or sharing copies', () => {
@@ -255,6 +283,15 @@ metadata: { name: unknown }
     expect(result.issues).toEqual([{ path: ['items', 0], message: expect.stringContaining('expected string, got null') }]);
     expect(value.settings).toEqual({ description: null, nullableMode: null });
     expect(value.labels).toEqual({ extra: null });
+  });
+
+  it('checks enums for nullable null CRD values even when the enum lists null', () => {
+    const budget = new ValidationBudget();
+    const schema = fromCrdSchema({ type: 'string', nullable: true, enum: [null, 'safe'] },
+      budget, { rules: 0, patterns: 0 }, { targetMinor: 36, defaulting: true });
+    expect(new Validator({}, budget).validate(null, schema).issues).toEqual([
+      { path: [], message: 'must be one of null, "safe"; got null' },
+    ]);
   });
 
   it('expands List objects, accepts JSON, and keeps going past invalid YAML documents', async () => {
