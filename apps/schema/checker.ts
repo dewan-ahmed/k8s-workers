@@ -152,7 +152,10 @@ function collectCrds(candidates: Candidate[], targetMinor: number, budget: Valid
     const kind = isObject(spec.names) ? text(spec.names.kind) : undefined;
     if (!group || !kind) continue;
     const shared = isObject(spec.validation) ? spec.validation.openAPIV3Schema : undefined;
-    const options = { targetMinor, defaulting: value.apiVersion === 'apiextensions.k8s.io/v1' };
+    const defaulting = value.apiVersion === 'apiextensions.k8s.io/v1';
+    const betaPruning = value.apiVersion === 'apiextensions.k8s.io/v1beta1' &&
+      targetMinor >= 20 && targetMinor <= 21 && spec.preserveUnknownFields === false;
+    const options = { targetMinor, defaulting, betaPruning };
     const versions = Array.isArray(spec.versions) && spec.versions.length
       ? spec.versions.filter(isObject)
       : [{ name: spec.version, served: true }];
