@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { validateManifest, type SchemaSet } from './checker';
 import { ValidationBudget } from './limits';
-import { fromCrdSchema, Validator } from './validator';
+import { fromCrdSchema, Unchecked, Validator } from './validator';
 
 const schemas = (minor: number): SchemaSet =>
   JSON.parse(readFileSync(new URL(`./public/schemas/1.${minor}.json`, import.meta.url), 'utf8'));
@@ -144,6 +144,13 @@ metadata: { name: unknown }
             spec: { type: 'object', properties: {
               colour: { type: 'string', oneOf: [{ enum: ['blue'], pattern: '^b' }, { enum: ['green'] }] },
               shade: { type: 'string', not: { anyOf: [{ enum: ['black'] }, { pattern: '^g' }] } },
+              endpoint: { type: 'string', oneOf: [{ enum: ['auto'] }, { format: 'ipv4' }, { pattern: '^svc-' }] },
+              mode: { type: 'string', pattern: '' },
+              settings: {
+                type: 'object',
+                properties: { mode: { type: 'string', default: 'safe' } },
+                not: { properties: { mode: { pattern: '^unsafe$' } } },
+              },
             } },
           } } },
         }],
@@ -155,21 +162,27 @@ metadata: { name: unknown }
     const report = await validate([
       crd, widget('unlisted-colour', { colour: 'red' }), widget('forbidden-shade', { shade: 'black' }),
       widget('unchecked-colour', { colour: 'blue' }), widget('accepted-colour', { colour: 'green' }),
+      widget('unchecked-endpoint', { endpoint: 'auto' }), widget('defaulted-mode', { settings: {} }),
+      widget('empty-pattern', { mode: 'safe' }),
     ].map(doc => JSON.stringify(doc)).join('\n---\n'));
-    expect(report).toMatchObject({ valid: 2, invalid: 2, skipped: 1 });
+    expect(report).toMatchObject({ valid: 3, invalid: 2, skipped: 3 });
     expect(report.resources.slice(1)).toMatchObject([
       { status: 'invalid', errors: [{ path: 'spec.colour', message: expect.stringContaining('must be one of') }] },
       { status: 'invalid', errors: [{ path: 'spec.shade', message: 'matches a schema it must not match (not)' }] },
+      { status: 'skipped', errors: [], notes: expect.arrayContaining([expect.stringContaining('depends on an unevaluated pattern')]) },
+      { status: 'valid', errors: [] },
+      { status: 'skipped', errors: [], notes: expect.arrayContaining([expect.stringContaining('string format this checker does not evaluate')]) },
       { status: 'skipped', errors: [], notes: expect.arrayContaining([expect.stringContaining('depends on an unevaluated pattern')]) },
       { status: 'valid', errors: [] },
     ]);
   });
 
   it('preserves known outcomes around unevaluated patterns in nested CRD rules', () => {
-    const evaluate = (schema: object, value: unknown = 'green') => {
+    const evaluate = (schema: object, value: unknown = 'green', targetMinor = 37) => {
       const budget = new ValidationBudget();
-      const result = new Validator({}, budget).validate(value, fromCrdSchema(schema, budget, { rules: 0, patterns: 0 }));
-      return result.issues.length ? 'invalid' : result.unknown ? 'skipped' : 'valid';
+      const result = new Validator({}, budget).validate(value,
+        fromCrdSchema(schema, budget, { rules: 0, patterns: 0 }, { targetMinor, defaulting: true }));
+      return result.issues.length ? 'invalid' : result.unchecked ? 'skipped' : 'valid';
     };
     const pattern = { pattern: '^g' };
     const matching = { enum: ['green'] };
@@ -183,6 +196,38 @@ metadata: { name: unknown }
     expect(evaluate({ not: { properties: { colours: { items: pattern } } } }, { colours: ['green'] })).toBe('skipped');
     expect(evaluate({ not: { additionalProperties: pattern } }, { colour: 'green' })).toBe('skipped');
     expect(evaluate(pattern, 12)).toBe('valid');
+    expect(evaluate({ format: 'app-defined' })).toBe('valid');
+    expect(evaluate({ format: 'k8s-short-name' }, 'green', 33)).toBe('valid');
+    expect(evaluate({ format: 'k8s-short-name' }, 'green', 34)).toBe('skipped');
+  });
+
+  it('uses structural defaults in alternative checks without mutating the input or sharing copies', () => {
+    const budget = new ValidationBudget();
+    const defaults = { type: 'string', default: 'safe' };
+    const schema = fromCrdSchema({
+      type: 'object',
+      properties: {
+        settings: {
+          type: 'object', default: {},
+          properties: { mode: defaults, nullableMode: { ...defaults, nullable: true } },
+        },
+        modes: { type: 'array', items: defaults },
+        profiles: { type: 'object', additionalProperties: defaults },
+      },
+      not: { enum: [{ settings: { mode: 'safe', nullableMode: 'safe' }, modes: ['safe'], profiles: { main: 'safe' } }] },
+    }, budget, { rules: 0, patterns: 0 }, { targetMinor: 37, defaulting: true });
+    const validator = new Validator({}, budget);
+    const resource = { modes: [null], profiles: { main: null } };
+    expect(validator.validate(resource, schema).issues.map(issue => issue.message)).toEqual(['matches a schema it must not match (not)']);
+    expect(resource).toEqual({ modes: [null], profiles: { main: null } });
+    expect(schema.properties?.settings.defaultValue).toEqual({});
+    expect(() => new Validator({}, new ValidationBudget(2)).validate(resource, schema)).toThrow('Manifest is too complex to validate.');
+
+    const nullable = fromCrdSchema({ type: 'object', properties: { mode: { ...defaults, nullable: true } },
+      not: { properties: { mode: { pattern: '^safe$' } } },
+    }, budget, { rules: 0, patterns: 0 }, { targetMinor: 37, defaulting: true });
+    expect(validator.validate({ mode: null }, nullable).unchecked).toBe(Unchecked.None);
+    expect(validator.validate({}, nullable).unchecked).toBe(Unchecked.Pattern);
   });
 
   it('expands List objects, accepts JSON, and keeps going past invalid YAML documents', async () => {

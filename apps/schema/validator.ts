@@ -17,7 +17,9 @@ export interface Schema {
   multipleOf?: number;
   minLength?: number;
   maxLength?: number;
-  skippedPattern?: true;
+  uncheckedString?: Unchecked;
+  defaultValue?: unknown;
+  hasDefaults?: true;
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
@@ -38,9 +40,15 @@ export interface Issue {
   message: string;
 }
 
+export enum Unchecked {
+  None = 0,
+  Pattern = 1,
+  Format = 2,
+}
+
 interface Evaluation {
   issues: Issue[];
-  unknown: boolean;
+  unchecked: Unchecked;
 }
 
 const quantityRef = 'io.k8s.apimachinery.pkg.api.resource.Quantity';
@@ -78,11 +86,44 @@ export class Validator {
   constructor(private readonly definitions: Record<string, Schema>, private readonly budget: ValidationBudget) {}
 
   validate(value: unknown, schema: Schema): Evaluation {
-    return this.evaluate(value, schema, [], 0);
+    return this.evaluate(this.withDefaults(value, schema, 0), schema, [], 0);
+  }
+
+  private withDefaults(value: unknown, schema: Schema, depth: number): unknown {
+    if (!schema.hasDefaults) return value;
+    this.budget.use(depth);
+    if ((value === undefined || (value === null && !schema.nullable)) && schema.defaultValue !== undefined) {
+      value = schema.defaultValue;
+    }
+    if (Array.isArray(value)) {
+      const items = schema.items;
+      if (!items?.hasDefaults) return value;
+      this.budget.use(depth, value.length);
+      return value.map(item => this.withDefaults(item, items, depth + 1));
+    }
+    if (value === null || typeof value !== 'object') return value;
+
+    const properties = schema.properties ?? {};
+    const propertyKeys = Object.keys(properties);
+    const keys = Object.keys(value);
+    this.budget.use(depth, propertyKeys.length + keys.length);
+    const copy = Object.assign(Object.create(null), value) as Record<string, unknown>;
+    for (const key of propertyKeys) {
+      const field = this.withDefaults(copy[key], properties[key], depth + 1);
+      if (field !== undefined) copy[key] = field;
+    }
+    const additional = schema.additionalProperties;
+    if (typeof additional === 'object' && additional.hasDefaults) {
+      this.budget.use(depth, keys.length);
+      for (const key of keys) {
+        if (!Object.hasOwn(properties, key)) copy[key] = this.withDefaults(copy[key], additional, depth + 1);
+      }
+    }
+    return copy;
   }
 
   private evaluate(value: unknown, schema: Schema, path: Path, depth: number): Evaluation {
-    const result: Evaluation = { issues: [], unknown: false };
+    const result: Evaluation = { issues: [], unchecked: Unchecked.None };
     this.check(value, schema, path, result, depth);
     return result;
   }
@@ -115,28 +156,28 @@ export class Validator {
     for (const [keyword, options] of [['anyOf', schema.anyOf], ['oneOf', schema.oneOf]] as const) {
       if (!options?.length) continue;
       let passing = 0;
-      let unknown = false;
+      let unchecked: Unchecked = Unchecked.None;
       let closest: Issue[] | undefined;
       for (const option of options) {
         const branch = this.evaluate(value, option, path, depth + 1);
-        // A checked failure rules out a branch even if it also has an unchecked pattern.
+        // A checked failure rules out a branch even if some of its checks were skipped.
         if (branch.issues.length) {
           if (!closest || branch.issues.length < closest.length) closest = branch.issues;
-        } else if (branch.unknown) {
-          unknown = true;
+        } else if (branch.unchecked) {
+          unchecked |= branch.unchecked;
         } else {
           passing++;
           if (keyword === 'anyOf' || passing > 1) break;
         }
       }
       if (keyword === 'oneOf' && passing > 1) add('matches more than one allowed schema (oneOf)');
-      else if (unknown && (keyword === 'oneOf' || !passing)) result.unknown = true;
-      if (!passing && !unknown && closest) for (const issue of closest) add(issue.message, issue.path);
+      else if (unchecked && (keyword === 'oneOf' || !passing)) result.unchecked |= unchecked;
+      if (!passing && !unchecked && closest) for (const issue of closest) add(issue.message, issue.path);
     }
     if (schema.not) {
       const negated = this.evaluate(value, schema.not, path, depth + 1);
       if (!negated.issues.length) {
-        if (negated.unknown) result.unknown = true;
+        if (negated.unchecked) result.unchecked |= negated.unchecked;
         else add('matches a schema it must not match (not)');
       }
     }
@@ -157,7 +198,7 @@ export class Validator {
       add(`must be one of ${choices}${schema.enum.length > 10 ? ', ...' : ''}; got ${show(value)}`);
     }
     if (typeof value === 'string') {
-      if (schema.skippedPattern) result.unknown = true;
+      result.unchecked |= schema.uncheckedString ?? Unchecked.None;
       this.checkString(value, schema, add);
     } else if (typeof value === 'number') this.checkNumber(value, schema, add);
     else if (Array.isArray(value)) {
@@ -227,15 +268,28 @@ export function formatPath(path: Path) {
 }
 
 const crdKeys = [
-  'type', 'format', 'enum', 'required', 'nullable', 'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum',
+  'type', 'enum', 'required', 'nullable', 'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum',
   'multipleOf', 'minLength', 'maxLength', 'minItems', 'maxItems', 'uniqueItems', 'minProperties', 'maxProperties',
   'x-kubernetes-int-or-string', 'x-kubernetes-preserve-unknown-fields', 'x-kubernetes-embedded-resource',
 ] as const;
 
+// Kubernetes ignores unrecognized formats; these recognized formats are not checked here.
+const uncheckedStringFormats = new Set([
+  'bsonobjectid', 'uri', 'email', 'hostname', 'ipv4', 'ipv6', 'cidr', 'mac', 'uuid', 'uuid3', 'uuid4', 'uuid5',
+  'isbn', 'isbn10', 'isbn13', 'creditcard', 'ssn', 'hexcolor', 'rgbcolor', 'date', 'duration',
+]);
+
+interface CrdOptions {
+  targetMinor: number;
+  defaulting: boolean;
+}
+
 export const objectMetaRef = 'io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta';
 
 /** Converts a CustomResourceDefinition structural schema to the validator's schema with strict unknown-field handling. */
-export function fromCrdSchema(input: unknown, budget: ValidationBudget, counter: { rules: number; patterns: number }, depth = 0): Schema {
+export function fromCrdSchema(
+  input: unknown, budget: ValidationBudget, counter: { rules: number; patterns: number }, options: CrdOptions, depth = 0,
+): Schema {
   budget.use(depth);
   if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
   const source = input as Record<string, unknown>;
@@ -252,12 +306,24 @@ export function fromCrdSchema(input: unknown, budget: ValidationBudget, counter:
     schema.required = source.required.filter((value): value is string => typeof value === 'string');
   }
   if (Array.isArray(source.enum)) schema.enum = source.enum;
-  if (typeof source.pattern === 'string') {
-    schema.skippedPattern = true;
+  if (typeof source.pattern === 'string' && source.pattern !== '') {
+    schema.uncheckedString = Unchecked.Pattern;
     counter.patterns++;
   }
+  if (typeof source.format === 'string') {
+    const format = source.format.replaceAll('-', '');
+    if (!schema.type || schema.type === 'string') {
+      if (format === 'byte' || format === 'datetime') schema.format = format === 'datetime' ? 'date-time' : 'byte';
+      else if (uncheckedStringFormats.has(format) ||
+        (options.targetMinor >= 34 && (format === 'k8sshortname' || format === 'k8slongname'))) {
+        schema.uncheckedString = (schema.uncheckedString ?? Unchecked.None) | Unchecked.Format;
+      }
+    }
+    if (source.format === 'int32' && (!schema.type || schema.type === 'integer')) schema.format = 'int32';
+  }
+  if (options.defaulting && source.default != null) schema.defaultValue = source.default;
   if (Array.isArray(source['x-kubernetes-validations'])) counter.rules += source['x-kubernetes-validations'].length;
-  const convert = (value: unknown) => fromCrdSchema(value, budget, counter, depth + 1);
+  const convert = (value: unknown) => fromCrdSchema(value, budget, counter, options, depth + 1);
   if (source.properties && typeof source.properties === 'object') {
     schema.properties = Object.fromEntries(Object.entries(source.properties).map(([key, value]) => [key, convert(value)]));
   }
@@ -275,5 +341,8 @@ export function fromCrdSchema(input: unknown, budget: ValidationBudget, counter:
     // Untyped schemas inside anyOf/allOf/oneOf/not only add value validations; they never prune fields.
     schema.additionalProperties = schema.type !== 'object' || Boolean(schema['x-kubernetes-preserve-unknown-fields']);
   }
+  if (schema.defaultValue !== undefined || schema.items?.hasDefaults ||
+    (typeof schema.additionalProperties === 'object' && schema.additionalProperties.hasDefaults) ||
+    Object.values(schema.properties ?? {}).some(property => property.hasDefaults)) schema.hasDefaults = true;
   return schema;
 }

@@ -2,7 +2,7 @@ import { findDeprecation } from '@k8s-workers/k8s-data';
 import { Composer, isMap, isSeq, LineCounter, Parser, type Node } from 'yaml';
 import apiIndex from './api-index.json';
 import { InputError, ValidationBudget } from './limits';
-import { formatPath, fromCrdSchema, objectMetaRef, Validator, type Issue, type Path, type Schema } from './validator';
+import { formatPath, fromCrdSchema, objectMetaRef, Unchecked, Validator, type Issue, type Path, type Schema } from './validator';
 
 export const maxInputBytes = 2 * 1024 * 1024;
 const maxResources = 500;
@@ -143,7 +143,7 @@ function lineAt(candidate: Candidate, path: Path) {
   return range ? candidate.lines.linePos(range[0]).line : undefined;
 }
 
-function collectCrds(candidates: Candidate[], budget: ValidationBudget) {
+function collectCrds(candidates: Candidate[], targetMinor: number, budget: ValidationBudget) {
   const crds = new Map<string, CrdVersion>();
   for (const { value, document } of candidates) {
     if (!isObject(value) || value.kind !== 'CustomResourceDefinition' || !text(value.apiVersion)?.startsWith('apiextensions.k8s.io/')) continue;
@@ -152,6 +152,7 @@ function collectCrds(candidates: Candidate[], budget: ValidationBudget) {
     const kind = isObject(spec.names) ? text(spec.names.kind) : undefined;
     if (!group || !kind) continue;
     const shared = isObject(spec.validation) ? spec.validation.openAPIV3Schema : undefined;
+    const options = { targetMinor, defaulting: value.apiVersion === 'apiextensions.k8s.io/v1' };
     const versions = Array.isArray(spec.versions) && spec.versions.length
       ? spec.versions.filter(isObject)
       : [{ name: spec.version, served: true }];
@@ -160,7 +161,7 @@ function collectCrds(candidates: Candidate[], budget: ValidationBudget) {
       if (!name) continue;
       const raw = isObject(version.schema) ? version.schema.openAPIV3Schema : shared;
       const counter = { rules: 0, patterns: 0 };
-      const schema = raw === undefined ? undefined : fromCrdSchema(raw, budget, counter);
+      const schema = raw === undefined ? undefined : fromCrdSchema(raw, budget, counter, options);
       if (schema) {
         schema.type = 'object';
         schema.properties = { ...schema.properties, apiVersion: { type: 'string' }, kind: { type: 'string' }, metadata: { $ref: objectMetaRef } };
@@ -244,7 +245,7 @@ export async function validateManifest(input: string, targetMinor: number, schem
   const { candidates, warnings } = parse(input, budget);
   addKnownEnums(schemas);
   const validator = new Validator(schemas.definitions, budget);
-  const crds = collectCrds(candidates, budget);
+  const crds = collectCrds(candidates, targetMinor, budget);
   const resources: ResourceResult[] = candidates.map(candidate => {
     const { value, document } = candidate;
     const result: ResourceResult = { document, line: lineAt(candidate, []), status: 'skipped', schema: null, errors: [], notes: [] };
@@ -272,7 +273,7 @@ export async function validateManifest(input: string, targetMinor: number, schem
     const definition = schemas.kinds[gvk];
     const crd = crds.get(gvk);
     const issues: Issue[] = candidate.parseErrors.map(message => ({ path: [], message }));
-    let patternOutcomeUnknown = false;
+    let unchecked: Unchecked = Unchecked.None;
     if (definition) {
       result.schema = 'built-in';
       issues.push(...validator.validate(value, { $ref: definition }).issues);
@@ -293,7 +294,7 @@ export async function validateManifest(input: string, targetMinor: number, schem
       else if (crd.schema) {
         const validation = validator.validate(value, crd.schema);
         issues.push(...validation.issues);
-        patternOutcomeUnknown = validation.unknown;
+        unchecked = validation.unchecked;
       } else result.notes.push(`The CustomResourceDefinition in ${crd.source} has no schema for ${apiVersion}, so fields are not validated.`);
       if (crd.rules) result.notes.push(`${crd.rules} x-kubernetes-validations rule${crd.rules === 1 ? '' : 's'} (CEL) were not evaluated.`);
       if (crd.patterns) result.notes.push('Regular-expression patterns from uploaded CustomResourceDefinitions are not evaluated.');
@@ -303,8 +304,11 @@ export async function validateManifest(input: string, targetMinor: number, schem
     }
     apiChecks(value, kind, result.schema === 'built-in', issues);
     fail(issues);
-    result.status = result.errors.length ? 'invalid' : patternOutcomeUnknown ? 'skipped' : 'valid';
-    if (result.status === 'skipped') result.notes.push('Validation is incomplete because the result depends on an unevaluated pattern.');
+    result.status = result.errors.length ? 'invalid' : unchecked ? 'skipped' : 'valid';
+    if (result.status === 'skipped') {
+      if (unchecked & Unchecked.Pattern) result.notes.push('Validation is incomplete because the result depends on an unevaluated pattern.');
+      if (unchecked & Unchecked.Format) result.notes.push('Validation is incomplete because the result depends on a string format this checker does not evaluate.');
+    }
     return result;
   });
   return {
