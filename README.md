@@ -51,4 +51,6 @@ curl http://localhost:8787/api/check \
 | `packages/k8s-data` | Shared API lifecycle catalog keyed by API version and kind |
 | `packages/email` | Shared Cloudflare Email Sending binding adapter |
 
+Every tool includes the attribution footer from [`@k8s-workers/ui`](packages/ui); Workers serving static HTML can use `appendSiteFooter` to insert it into their page's `<footer>`.
+
 Catalog entries link to the Kubernetes [Deprecated API Migration Guide](https://kubernetes.io/docs/reference/using-api/deprecation-guide/), [upstream lifecycle annotations](https://github.com/kubernetes/api/tree/v0.37.2), or the official announcement where appropriate.

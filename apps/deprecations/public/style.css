@@ -76,6 +76,7 @@ details ul { margin: .5rem 0 0; padding-left: 1.25rem; }
 .email-fields { margin-top: .75rem; flex-wrap: wrap; }
 .email-fields input { flex: 1 1 12rem; min-width: 0; }
 footer { padding-bottom: 2rem; }
+.site-credit { margin-top: .5rem; }
 @media (max-width: 34rem) {
   .panel-heading { align-items: flex-start; flex-direction: column; }
   .version { width: 100%; }

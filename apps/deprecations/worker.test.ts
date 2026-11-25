@@ -6,6 +6,7 @@ const url = 'https://deprecations.k8s.workers.dev';
 const send = vi.fn(async () => ({ messageId: 'simulated' }));
 const binding = (success = true) => ({ limit: vi.fn(async () => ({ success })) });
 const env = () => ({
+  ASSETS: { fetch: vi.fn() },
   EMAIL: { send }, EMAIL_FROM: 'reports@example.com', SCAN_LIMIT: binding(), EMAIL_LIMIT: binding(),
 });
 const request = (path: string, data: object, headers: Record<string, string> = {}) => new Request(url + path, {
