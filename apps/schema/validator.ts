@@ -19,6 +19,7 @@ export interface Schema {
   maxLength?: number;
   uncheckedString?: Unchecked;
   defaultValue?: unknown;
+  crd?: true;
   normalizeCrd?: true;
   minItems?: number;
   maxItems?: number;
@@ -55,8 +56,25 @@ const quantityRef = 'io.k8s.apimachinery.pkg.api.resource.Quantity';
 const intOrStringRef = 'io.k8s.apimachinery.pkg.util.intstr.IntOrString';
 const quantity = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[KMGTPE]i|[numkMGTPE]|[eE][+-]?\d+)?$/;
 const dateTime = /^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$/;
+const crdDate = /^(\d{4})-(\d{2})-(\d{2})$/;
+const crdTime = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:[^\n]\d+)?(?:z|[+-]\d{2}:\d{2})$/u;
 const base64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const maxIssues = 100;
+
+function isCrdDateTime(value: string) {
+  // Match kube-openapi strfmt.IsDateTime, including its permissive fraction separator and offset.
+  const lower = value.toLowerCase();
+  const separator = lower.indexOf('t');
+  if (separator < 0) return false;
+  const date = crdDate.exec(lower.slice(0, separator));
+  if (!date) return false;
+  const [year, month, day] = date.slice(1).map(Number);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > (days[month - 1] ?? 0)) return false;
+  const nextSeparator = lower.indexOf('t', separator + 1);
+  return crdTime.test(lower.slice(separator + 1, nextSeparator === -1 ? undefined : nextSeparator));
+}
 
 function typeOf(value: unknown) {
   if (value === null) return 'null';
@@ -98,6 +116,8 @@ export class Validator {
     if (Array.isArray(value)) {
       const items = schema.items;
       if (!items?.normalizeCrd) return value;
+      if (items.defaultValue === undefined && !items.items && !items.properties &&
+        typeof items.additionalProperties !== 'object') return value;
       this.budget.use(depth, value.length);
       return value.map(item => this.normalizeCrd(item, items, depth + 1));
     }
@@ -151,6 +171,11 @@ export class Validator {
     const schema = this.resolve(input);
     const add = (message: string, at = path) => { if (issues.length < maxIssues) issues.push({ path: at, message }); };
     if (value === null) {
+      if (schema.crd) {
+        if (schema.type && schema.type !== 'null' && !schema.nullable) add(`expected ${schema.type}, got null`);
+        else this.checkEnum(value, schema, depth, add);
+        return;
+      }
       if (path.length && typeof path.at(-1) === 'string') return;
       if (schema.nullable || !schema.type) return;
     }
@@ -197,10 +222,7 @@ export class Validator {
       if (!matches) return add(`expected ${schema.type}, got ${actual}${actual === 'object' || actual === 'array' ? '' : ` ${show(value)}`}`);
     }
 
-    if (schema.enum && !schema.enum.some(option => deepEqual(option, value, this.budget, depth + 1))) {
-      const choices = schema.enum.slice(0, 10).map(show).join(', ');
-      add(`must be one of ${choices}${schema.enum.length > 10 ? ', ...' : ''}; got ${show(value)}`);
-    }
+    this.checkEnum(value, schema, depth, add);
     if (typeof value === 'string') {
       result.unchecked |= schema.uncheckedString ?? Unchecked.None;
       this.checkString(value, schema, add);
@@ -221,11 +243,21 @@ export class Validator {
     }
   }
 
+  private checkEnum(value: unknown, schema: Schema, depth: number, add: (message: string) => void) {
+    if (!schema.enum || (schema.crd && !schema.enum.length)) return;
+    // kube-openapi's enum validator never matches null, even when it is listed.
+    if ((schema.crd && value === null) || !schema.enum.some(option => deepEqual(option, value, this.budget, depth + 1))) {
+      const choices = schema.enum.slice(0, 10).map(show).join(', ');
+      add(`must be one of ${choices}${schema.enum.length > 10 ? ', ...' : ''}; got ${show(value)}`);
+    }
+  }
+
   private checkString(value: string, schema: Schema, add: (message: string) => void) {
     if (schema.minLength !== undefined && [...value].length < schema.minLength) add(`must be at least ${schema.minLength} characters`);
     if (schema.maxLength !== undefined && [...value].length > schema.maxLength) add(`must be at most ${schema.maxLength} characters`);
     if (schema.format === 'byte' && !base64.test(value.replace(/[\r\n]/g, ''))) add('must be base64 encoded');
     if (schema.format === 'date-time' && !dateTime.test(value)) add(`${show(value)} is not an RFC 3339 date-time`);
+    if (schema.format === 'crd-date-time' && !isCrdDateTime(value)) add(`${show(value)} is not a valid Kubernetes date-time`);
   }
 
   private checkNumber(value: number, schema: Schema, add: (message: string) => void) {
@@ -250,7 +282,7 @@ export class Validator {
     for (const field of schema.required ?? []) {
       if (issues.length >= maxIssues) break;
       this.budget.use(depth);
-      if (!Object.hasOwn(value, field) || value[field] === undefined || (value[field] === null && !schema.normalizeCrd)) {
+      if (!Object.hasOwn(value, field) || value[field] === undefined || (value[field] === null && !schema.crd)) {
         add(`missing required field "${field}"`);
       }
     }
@@ -282,7 +314,7 @@ const crdKeys = [
 // Kubernetes ignores unrecognized formats; these recognized formats are not checked here.
 const uncheckedStringFormats = new Set([
   'bsonobjectid', 'uri', 'email', 'hostname', 'ipv4', 'ipv6', 'cidr', 'mac', 'uuid', 'uuid3', 'uuid4', 'uuid5',
-  'isbn', 'isbn10', 'isbn13', 'creditcard', 'ssn', 'hexcolor', 'rgbcolor', 'date', 'datetime', 'duration',
+  'isbn', 'isbn10', 'isbn13', 'creditcard', 'ssn', 'hexcolor', 'rgbcolor', 'date', 'duration',
 ]);
 
 interface CrdOptions {
@@ -299,7 +331,7 @@ export function fromCrdSchema(
   budget.use(depth);
   if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
   const source = input as Record<string, unknown>;
-  const schema: Schema = {};
+  const schema: Schema = { crd: true };
   for (const key of crdKeys) {
     const value = source[key];
     if (value === undefined || key === 'required' || key === 'enum') continue;
@@ -321,6 +353,7 @@ export function fromCrdSchema(
     if (!schema.type || schema.type === 'string') {
       // The name formats require compatibility 1.34, defaulting to the server minor minus one.
       if (format === 'byte') schema.format = 'byte';
+      else if (format === 'datetime') schema.format = 'crd-date-time';
       else if (uncheckedStringFormats.has(format) ||
         (options.targetMinor >= 35 && (format === 'k8sshortname' || format === 'k8slongname'))) {
         schema.uncheckedString = (schema.uncheckedString ?? Unchecked.None) | Unchecked.Format;
