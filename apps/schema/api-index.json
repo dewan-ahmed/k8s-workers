@@ -1,0 +1,1649 @@
+{
+ "releases": {
+  "16": "v1.16.15",
+  "17": "v1.17.17",
+  "18": "v1.18.20",
+  "19": "v1.19.16",
+  "20": "v1.20.15",
+  "21": "v1.21.14",
+  "22": "v1.22.17",
+  "23": "v1.23.17",
+  "24": "v1.24.17",
+  "25": "v1.25.16",
+  "26": "v1.26.15",
+  "27": "v1.27.16",
+  "28": "v1.28.15",
+  "29": "v1.29.15",
+  "30": "v1.30.14",
+  "31": "v1.31.14",
+  "32": "v1.32.13",
+  "33": "v1.33.13",
+  "34": "v1.34.13",
+  "35": "v1.35.10",
+  "36": "v1.36.6",
+  "37": "v1.37.2"
+ },
+ "groups": [
+  "",
+  "admissionregistration.k8s.io",
+  "apiextensions.k8s.io",
+  "apiregistration.k8s.io",
+  "apps",
+  "auditregistration.k8s.io",
+  "authentication.k8s.io",
+  "authorization.k8s.io",
+  "autoscaling",
+  "batch",
+  "certificates.k8s.io",
+  "coordination.k8s.io",
+  "discovery.k8s.io",
+  "events.k8s.io",
+  "extensions",
+  "flowcontrol.apiserver.k8s.io",
+  "internal.apiserver.k8s.io",
+  "lifecycle.k8s.io",
+  "networking.k8s.io",
+  "node.k8s.io",
+  "policy",
+  "rbac.authorization.k8s.io",
+  "resource.k8s.io",
+  "scheduling.k8s.io",
+  "settings.k8s.io",
+  "storage.k8s.io",
+  "storagemigration.k8s.io"
+ ],
+ "served": {
+  "admissionregistration.k8s.io/v1/MutatingAdmissionPolicy": [
+   36,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/MutatingAdmissionPolicyBinding": [
+   36,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/MutatingAdmissionPolicyBindingList": [
+   36,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/MutatingAdmissionPolicyList": [
+   36,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/MutatingWebhookConfiguration": [
+   16,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/MutatingWebhookConfigurationList": [
+   16,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy": [
+   30,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyBinding": [
+   30,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyBindingList": [
+   30,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyList": [
+   30,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/ValidatingWebhookConfiguration": [
+   16,
+   37
+  ],
+  "admissionregistration.k8s.io/v1/ValidatingWebhookConfigurationList": [
+   16,
+   37
+  ],
+  "admissionregistration.k8s.io/v1alpha1/MutatingAdmissionPolicy": [
+   32,
+   37
+  ],
+  "admissionregistration.k8s.io/v1alpha1/MutatingAdmissionPolicyBinding": [
+   32,
+   37
+  ],
+  "admissionregistration.k8s.io/v1alpha1/MutatingAdmissionPolicyBindingList": [
+   32,
+   37
+  ],
+  "admissionregistration.k8s.io/v1alpha1/MutatingAdmissionPolicyList": [
+   32,
+   37
+  ],
+  "admissionregistration.k8s.io/v1alpha1/ValidatingAdmissionPolicy": [
+   26,
+   31
+  ],
+  "admissionregistration.k8s.io/v1alpha1/ValidatingAdmissionPolicyBinding": [
+   26,
+   31
+  ],
+  "admissionregistration.k8s.io/v1alpha1/ValidatingAdmissionPolicyBindingList": [
+   26,
+   31
+  ],
+  "admissionregistration.k8s.io/v1alpha1/ValidatingAdmissionPolicyList": [
+   26,
+   31
+  ],
+  "admissionregistration.k8s.io/v1beta1/MutatingAdmissionPolicy": [
+   34,
+   37
+  ],
+  "admissionregistration.k8s.io/v1beta1/MutatingAdmissionPolicyBinding": [
+   34,
+   37
+  ],
+  "admissionregistration.k8s.io/v1beta1/MutatingAdmissionPolicyBindingList": [
+   34,
+   37
+  ],
+  "admissionregistration.k8s.io/v1beta1/MutatingAdmissionPolicyList": [
+   34,
+   37
+  ],
+  "admissionregistration.k8s.io/v1beta1/MutatingWebhookConfiguration": [
+   16,
+   21
+  ],
+  "admissionregistration.k8s.io/v1beta1/MutatingWebhookConfigurationList": [
+   16,
+   21
+  ],
+  "admissionregistration.k8s.io/v1beta1/ValidatingAdmissionPolicy": [
+   28,
+   33
+  ],
+  "admissionregistration.k8s.io/v1beta1/ValidatingAdmissionPolicyBinding": [
+   28,
+   33
+  ],
+  "admissionregistration.k8s.io/v1beta1/ValidatingAdmissionPolicyBindingList": [
+   28,
+   33
+  ],
+  "admissionregistration.k8s.io/v1beta1/ValidatingAdmissionPolicyList": [
+   28,
+   33
+  ],
+  "admissionregistration.k8s.io/v1beta1/ValidatingWebhookConfiguration": [
+   16,
+   21
+  ],
+  "admissionregistration.k8s.io/v1beta1/ValidatingWebhookConfigurationList": [
+   16,
+   21
+  ],
+  "apiextensions.k8s.io/v1/CustomResourceDefinition": [
+   16,
+   37
+  ],
+  "apiextensions.k8s.io/v1/CustomResourceDefinitionList": [
+   16,
+   37
+  ],
+  "apiextensions.k8s.io/v1beta1/CustomResourceDefinition": [
+   16,
+   21
+  ],
+  "apiextensions.k8s.io/v1beta1/CustomResourceDefinitionList": [
+   16,
+   21
+  ],
+  "apiregistration.k8s.io/v1/APIService": [
+   16,
+   37
+  ],
+  "apiregistration.k8s.io/v1/APIServiceList": [
+   16,
+   37
+  ],
+  "apiregistration.k8s.io/v1beta1/APIService": [
+   16,
+   21
+  ],
+  "apiregistration.k8s.io/v1beta1/APIServiceList": [
+   16,
+   21
+  ],
+  "apps/v1/ControllerRevision": [
+   16,
+   37
+  ],
+  "apps/v1/ControllerRevisionList": [
+   16,
+   37
+  ],
+  "apps/v1/DaemonSet": [
+   16,
+   37
+  ],
+  "apps/v1/DaemonSetList": [
+   16,
+   37
+  ],
+  "apps/v1/Deployment": [
+   16,
+   37
+  ],
+  "apps/v1/DeploymentList": [
+   16,
+   37
+  ],
+  "apps/v1/ReplicaSet": [
+   16,
+   37
+  ],
+  "apps/v1/ReplicaSetList": [
+   16,
+   37
+  ],
+  "apps/v1/StatefulSet": [
+   16,
+   37
+  ],
+  "apps/v1/StatefulSetList": [
+   16,
+   37
+  ],
+  "apps/v1beta1/ControllerRevision": [
+   16,
+   17
+  ],
+  "apps/v1beta1/ControllerRevisionList": [
+   16,
+   17
+  ],
+  "apps/v1beta1/Deployment": [
+   16,
+   17
+  ],
+  "apps/v1beta1/DeploymentList": [
+   16,
+   17
+  ],
+  "apps/v1beta1/DeploymentRollback": [
+   16,
+   17
+  ],
+  "apps/v1beta1/Scale": [
+   16,
+   17
+  ],
+  "apps/v1beta1/StatefulSet": [
+   16,
+   17
+  ],
+  "apps/v1beta1/StatefulSetList": [
+   16,
+   17
+  ],
+  "apps/v1beta2/ControllerRevision": [
+   16,
+   17
+  ],
+  "apps/v1beta2/ControllerRevisionList": [
+   16,
+   17
+  ],
+  "apps/v1beta2/DaemonSet": [
+   16,
+   17
+  ],
+  "apps/v1beta2/DaemonSetList": [
+   16,
+   17
+  ],
+  "apps/v1beta2/Deployment": [
+   16,
+   17
+  ],
+  "apps/v1beta2/DeploymentList": [
+   16,
+   17
+  ],
+  "apps/v1beta2/ReplicaSet": [
+   16,
+   17
+  ],
+  "apps/v1beta2/ReplicaSetList": [
+   16,
+   17
+  ],
+  "apps/v1beta2/Scale": [
+   16,
+   17
+  ],
+  "apps/v1beta2/StatefulSet": [
+   16,
+   17
+  ],
+  "apps/v1beta2/StatefulSetList": [
+   16,
+   17
+  ],
+  "auditregistration.k8s.io/v1alpha1/AuditSink": [
+   16,
+   18
+  ],
+  "auditregistration.k8s.io/v1alpha1/AuditSinkList": [
+   16,
+   18
+  ],
+  "authentication.k8s.io/v1/SelfSubjectReview": [
+   28,
+   37
+  ],
+  "authentication.k8s.io/v1/TokenRequest": [
+   16,
+   37
+  ],
+  "authentication.k8s.io/v1/TokenReview": [
+   16,
+   37
+  ],
+  "authentication.k8s.io/v1alpha1/SelfSubjectReview": [
+   26,
+   31
+  ],
+  "authentication.k8s.io/v1beta1/SelfSubjectReview": [
+   27,
+   32
+  ],
+  "authentication.k8s.io/v1beta1/TokenReview": [
+   16,
+   21
+  ],
+  "authorization.k8s.io/v1/LocalSubjectAccessReview": [
+   16,
+   37
+  ],
+  "authorization.k8s.io/v1/SelfSubjectAccessReview": [
+   16,
+   37
+  ],
+  "authorization.k8s.io/v1/SelfSubjectRulesReview": [
+   16,
+   37
+  ],
+  "authorization.k8s.io/v1/SubjectAccessReview": [
+   16,
+   37
+  ],
+  "authorization.k8s.io/v1beta1/LocalSubjectAccessReview": [
+   16,
+   21
+  ],
+  "authorization.k8s.io/v1beta1/SelfSubjectAccessReview": [
+   16,
+   21
+  ],
+  "authorization.k8s.io/v1beta1/SelfSubjectRulesReview": [
+   16,
+   21
+  ],
+  "authorization.k8s.io/v1beta1/SubjectAccessReview": [
+   16,
+   21
+  ],
+  "autoscaling/v1/HorizontalPodAutoscaler": [
+   16,
+   37
+  ],
+  "autoscaling/v1/HorizontalPodAutoscalerList": [
+   16,
+   37
+  ],
+  "autoscaling/v1/Scale": [
+   16,
+   37
+  ],
+  "autoscaling/v2/HorizontalPodAutoscaler": [
+   23,
+   37
+  ],
+  "autoscaling/v2/HorizontalPodAutoscalerList": [
+   23,
+   37
+  ],
+  "autoscaling/v2beta1/HorizontalPodAutoscaler": [
+   16,
+   24
+  ],
+  "autoscaling/v2beta1/HorizontalPodAutoscalerList": [
+   16,
+   24
+  ],
+  "autoscaling/v2beta2/HorizontalPodAutoscaler": [
+   16,
+   25
+  ],
+  "autoscaling/v2beta2/HorizontalPodAutoscalerList": [
+   16,
+   25
+  ],
+  "batch/v1/CronJob": [
+   21,
+   37
+  ],
+  "batch/v1/CronJobList": [
+   21,
+   37
+  ],
+  "batch/v1/Job": [
+   16,
+   37
+  ],
+  "batch/v1/JobList": [
+   16,
+   37
+  ],
+  "batch/v1beta1/CronJob": [
+   16,
+   24
+  ],
+  "batch/v1beta1/CronJobList": [
+   16,
+   24
+  ],
+  "batch/v2alpha1/CronJob": [
+   16,
+   20
+  ],
+  "batch/v2alpha1/CronJobList": [
+   16,
+   20
+  ],
+  "certificates.k8s.io/v1/CertificateSigningRequest": [
+   19,
+   37
+  ],
+  "certificates.k8s.io/v1/CertificateSigningRequestList": [
+   19,
+   37
+  ],
+  "certificates.k8s.io/v1/ClusterTrustBundle": [
+   37,
+   37
+  ],
+  "certificates.k8s.io/v1/ClusterTrustBundleList": [
+   37,
+   37
+  ],
+  "certificates.k8s.io/v1/PodCertificateRequest": [
+   37,
+   37
+  ],
+  "certificates.k8s.io/v1/PodCertificateRequestList": [
+   37,
+   37
+  ],
+  "certificates.k8s.io/v1alpha1/ClusterTrustBundle": [
+   27,
+   36
+  ],
+  "certificates.k8s.io/v1alpha1/ClusterTrustBundleList": [
+   27,
+   36
+  ],
+  "certificates.k8s.io/v1alpha1/PodCertificateRequest": [
+   34,
+   34
+  ],
+  "certificates.k8s.io/v1alpha1/PodCertificateRequestList": [
+   34,
+   34
+  ],
+  "certificates.k8s.io/v1beta1/CertificateSigningRequest": [
+   16,
+   21
+  ],
+  "certificates.k8s.io/v1beta1/CertificateSigningRequestList": [
+   16,
+   21
+  ],
+  "certificates.k8s.io/v1beta1/ClusterTrustBundle": [
+   33,
+   37
+  ],
+  "certificates.k8s.io/v1beta1/ClusterTrustBundleList": [
+   33,
+   37
+  ],
+  "certificates.k8s.io/v1beta1/PodCertificateRequest": [
+   35,
+   37
+  ],
+  "certificates.k8s.io/v1beta1/PodCertificateRequestList": [
+   35,
+   37
+  ],
+  "coordination.k8s.io/v1/Lease": [
+   16,
+   37
+  ],
+  "coordination.k8s.io/v1/LeaseList": [
+   16,
+   37
+  ],
+  "coordination.k8s.io/v1alpha1/LeaseCandidate": [
+   31,
+   31
+  ],
+  "coordination.k8s.io/v1alpha1/LeaseCandidateList": [
+   31,
+   31
+  ],
+  "coordination.k8s.io/v1alpha2/LeaseCandidate": [
+   32,
+   37
+  ],
+  "coordination.k8s.io/v1alpha2/LeaseCandidateList": [
+   32,
+   37
+  ],
+  "coordination.k8s.io/v1beta1/Lease": [
+   16,
+   21
+  ],
+  "coordination.k8s.io/v1beta1/LeaseCandidate": [
+   33,
+   37
+  ],
+  "coordination.k8s.io/v1beta1/LeaseCandidateList": [
+   33,
+   37
+  ],
+  "coordination.k8s.io/v1beta1/LeaseList": [
+   16,
+   21
+  ],
+  "discovery.k8s.io/v1/EndpointSlice": [
+   21,
+   37
+  ],
+  "discovery.k8s.io/v1/EndpointSliceList": [
+   21,
+   37
+  ],
+  "discovery.k8s.io/v1alpha1/EndpointSlice": [
+   16,
+   16
+  ],
+  "discovery.k8s.io/v1alpha1/EndpointSliceList": [
+   16,
+   16
+  ],
+  "discovery.k8s.io/v1beta1/EndpointSlice": [
+   17,
+   24
+  ],
+  "discovery.k8s.io/v1beta1/EndpointSliceList": [
+   17,
+   24
+  ],
+  "events.k8s.io/v1/Event": [
+   19,
+   37
+  ],
+  "events.k8s.io/v1/EventList": [
+   19,
+   37
+  ],
+  "events.k8s.io/v1beta1/Event": [
+   16,
+   24
+  ],
+  "events.k8s.io/v1beta1/EventList": [
+   16,
+   24
+  ],
+  "extensions/v1beta1/DaemonSet": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/DaemonSetList": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/Deployment": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/DeploymentList": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/DeploymentRollback": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/Ingress": [
+   16,
+   21
+  ],
+  "extensions/v1beta1/IngressList": [
+   16,
+   21
+  ],
+  "extensions/v1beta1/NetworkPolicy": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/NetworkPolicyList": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/PodSecurityPolicy": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/PodSecurityPolicyList": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/ReplicaSet": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/ReplicaSetList": [
+   16,
+   17
+  ],
+  "extensions/v1beta1/Scale": [
+   16,
+   17
+  ],
+  "flowcontrol.apiserver.k8s.io/v1/FlowSchema": [
+   29,
+   37
+  ],
+  "flowcontrol.apiserver.k8s.io/v1/FlowSchemaList": [
+   29,
+   37
+  ],
+  "flowcontrol.apiserver.k8s.io/v1/PriorityLevelConfiguration": [
+   29,
+   37
+  ],
+  "flowcontrol.apiserver.k8s.io/v1/PriorityLevelConfigurationList": [
+   29,
+   37
+  ],
+  "flowcontrol.apiserver.k8s.io/v1alpha1/FlowSchema": [
+   17,
+   20
+  ],
+  "flowcontrol.apiserver.k8s.io/v1alpha1/FlowSchemaList": [
+   17,
+   20
+  ],
+  "flowcontrol.apiserver.k8s.io/v1alpha1/PriorityLevelConfiguration": [
+   17,
+   20
+  ],
+  "flowcontrol.apiserver.k8s.io/v1alpha1/PriorityLevelConfigurationList": [
+   17,
+   20
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta1/FlowSchema": [
+   20,
+   25
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta1/FlowSchemaList": [
+   20,
+   25
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta1/PriorityLevelConfiguration": [
+   20,
+   25
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta1/PriorityLevelConfigurationList": [
+   20,
+   25
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta2/FlowSchema": [
+   23,
+   28
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta2/FlowSchemaList": [
+   23,
+   28
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta2/PriorityLevelConfiguration": [
+   23,
+   28
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta2/PriorityLevelConfigurationList": [
+   23,
+   28
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta3/FlowSchema": [
+   26,
+   31
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta3/FlowSchemaList": [
+   26,
+   31
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta3/PriorityLevelConfiguration": [
+   26,
+   31
+  ],
+  "flowcontrol.apiserver.k8s.io/v1beta3/PriorityLevelConfigurationList": [
+   26,
+   31
+  ],
+  "internal.apiserver.k8s.io/v1alpha1/StorageVersion": [
+   20,
+   37
+  ],
+  "internal.apiserver.k8s.io/v1alpha1/StorageVersionList": [
+   20,
+   37
+  ],
+  "lifecycle.k8s.io/v1alpha1/Eviction": [
+   37,
+   37
+  ],
+  "lifecycle.k8s.io/v1alpha1/EvictionList": [
+   37,
+   37
+  ],
+  "lifecycle.k8s.io/v1alpha1/EvictionRequest": [
+   37,
+   37
+  ],
+  "lifecycle.k8s.io/v1alpha1/EvictionRequestList": [
+   37,
+   37
+  ],
+  "networking.k8s.io/v1/Ingress": [
+   19,
+   37
+  ],
+  "networking.k8s.io/v1/IngressClass": [
+   19,
+   37
+  ],
+  "networking.k8s.io/v1/IngressClassList": [
+   19,
+   37
+  ],
+  "networking.k8s.io/v1/IngressList": [
+   19,
+   37
+  ],
+  "networking.k8s.io/v1/IPAddress": [
+   33,
+   37
+  ],
+  "networking.k8s.io/v1/IPAddressList": [
+   33,
+   37
+  ],
+  "networking.k8s.io/v1/NetworkPolicy": [
+   16,
+   37
+  ],
+  "networking.k8s.io/v1/NetworkPolicyList": [
+   16,
+   37
+  ],
+  "networking.k8s.io/v1/ServiceCIDR": [
+   33,
+   37
+  ],
+  "networking.k8s.io/v1/ServiceCIDRList": [
+   33,
+   37
+  ],
+  "networking.k8s.io/v1alpha1/ClusterCIDR": [
+   25,
+   28
+  ],
+  "networking.k8s.io/v1alpha1/ClusterCIDRList": [
+   25,
+   28
+  ],
+  "networking.k8s.io/v1alpha1/IPAddress": [
+   27,
+   30
+  ],
+  "networking.k8s.io/v1alpha1/IPAddressList": [
+   27,
+   30
+  ],
+  "networking.k8s.io/v1alpha1/ServiceCIDR": [
+   29,
+   30
+  ],
+  "networking.k8s.io/v1alpha1/ServiceCIDRList": [
+   29,
+   30
+  ],
+  "networking.k8s.io/v1beta1/Ingress": [
+   16,
+   21
+  ],
+  "networking.k8s.io/v1beta1/IngressClass": [
+   18,
+   21
+  ],
+  "networking.k8s.io/v1beta1/IngressClassList": [
+   18,
+   21
+  ],
+  "networking.k8s.io/v1beta1/IngressList": [
+   16,
+   21
+  ],
+  "networking.k8s.io/v1beta1/IPAddress": [
+   31,
+   36
+  ],
+  "networking.k8s.io/v1beta1/IPAddressList": [
+   31,
+   36
+  ],
+  "networking.k8s.io/v1beta1/ServiceCIDR": [
+   31,
+   36
+  ],
+  "networking.k8s.io/v1beta1/ServiceCIDRList": [
+   31,
+   36
+  ],
+  "node.k8s.io/v1/RuntimeClass": [
+   20,
+   37
+  ],
+  "node.k8s.io/v1/RuntimeClassList": [
+   20,
+   37
+  ],
+  "node.k8s.io/v1alpha1/RuntimeClass": [
+   16,
+   23
+  ],
+  "node.k8s.io/v1alpha1/RuntimeClassList": [
+   16,
+   23
+  ],
+  "node.k8s.io/v1beta1/RuntimeClass": [
+   16,
+   24
+  ],
+  "node.k8s.io/v1beta1/RuntimeClassList": [
+   16,
+   24
+  ],
+  "policy/v1/Eviction": [
+   22,
+   37
+  ],
+  "policy/v1/PodDisruptionBudget": [
+   21,
+   37
+  ],
+  "policy/v1/PodDisruptionBudgetList": [
+   21,
+   37
+  ],
+  "policy/v1beta1/Eviction": [
+   16,
+   21
+  ],
+  "policy/v1beta1/PodDisruptionBudget": [
+   16,
+   24
+  ],
+  "policy/v1beta1/PodDisruptionBudgetList": [
+   16,
+   24
+  ],
+  "policy/v1beta1/PodSecurityPolicy": [
+   16,
+   24
+  ],
+  "policy/v1beta1/PodSecurityPolicyList": [
+   16,
+   24
+  ],
+  "rbac.authorization.k8s.io/v1/ClusterRole": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1/ClusterRoleBinding": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1/ClusterRoleBindingList": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1/ClusterRoleList": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1/Role": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1/RoleBinding": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1/RoleBindingList": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1/RoleList": [
+   16,
+   37
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/ClusterRole": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/ClusterRoleBinding": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/ClusterRoleBindingList": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/ClusterRoleList": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/Role": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/RoleBinding": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/RoleBindingList": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1alpha1/RoleList": [
+   16,
+   22
+  ],
+  "rbac.authorization.k8s.io/v1beta1/ClusterRole": [
+   16,
+   21
+  ],
+  "rbac.authorization.k8s.io/v1beta1/ClusterRoleBinding": [
+   16,
+   21
+  ],
+  "rbac.authorization.k8s.io/v1beta1/ClusterRoleBindingList": [
+   16,
+   21
+  ],
+  "rbac.authorization.k8s.io/v1beta1/ClusterRoleList": [
+   16,
+   21
+  ],
+  "rbac.authorization.k8s.io/v1beta1/Role": [
+   16,
+   21
+  ],
+  "rbac.authorization.k8s.io/v1beta1/RoleBinding": [
+   16,
+   21
+  ],
+  "rbac.authorization.k8s.io/v1beta1/RoleBindingList": [
+   16,
+   21
+  ],
+  "rbac.authorization.k8s.io/v1beta1/RoleList": [
+   16,
+   21
+  ],
+  "resource.k8s.io/v1/DeviceClass": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1/DeviceClassList": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1/DeviceTaintRule": [
+   37,
+   37
+  ],
+  "resource.k8s.io/v1/DeviceTaintRuleList": [
+   37,
+   37
+  ],
+  "resource.k8s.io/v1/ResourceClaim": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1/ResourceClaimList": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1/ResourceClaimTemplate": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1/ResourceClaimTemplateList": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1/ResourceSlice": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1/ResourceSliceList": [
+   34,
+   37
+  ],
+  "resource.k8s.io/v1alpha1/PodScheduling": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha1/PodSchedulingList": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha1/ResourceClaim": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha1/ResourceClaimList": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha1/ResourceClaimTemplate": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha1/ResourceClaimTemplateList": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha1/ResourceClass": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha1/ResourceClassList": [
+   26,
+   26
+  ],
+  "resource.k8s.io/v1alpha2/PodSchedulingContext": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/PodSchedulingContextList": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClaim": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClaimList": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClaimParameters": [
+   30,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClaimParametersList": [
+   30,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClaimTemplate": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClaimTemplateList": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClass": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClassList": [
+   27,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClassParameters": [
+   30,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceClassParametersList": [
+   30,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceSlice": [
+   30,
+   30
+  ],
+  "resource.k8s.io/v1alpha2/ResourceSliceList": [
+   30,
+   30
+  ],
+  "resource.k8s.io/v1alpha3/DeviceClass": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1alpha3/DeviceClassList": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1alpha3/DeviceTaintRule": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1alpha3/DeviceTaintRuleList": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1alpha3/PodSchedulingContext": [
+   31,
+   31
+  ],
+  "resource.k8s.io/v1alpha3/PodSchedulingContextList": [
+   31,
+   31
+  ],
+  "resource.k8s.io/v1alpha3/ResourceClaim": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1alpha3/ResourceClaimList": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1alpha3/ResourceClaimTemplate": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1alpha3/ResourceClaimTemplateList": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1alpha3/ResourcePoolStatusRequest": [
+   36,
+   37
+  ],
+  "resource.k8s.io/v1alpha3/ResourcePoolStatusRequestList": [
+   36,
+   37
+  ],
+  "resource.k8s.io/v1alpha3/ResourceSlice": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1alpha3/ResourceSliceList": [
+   31,
+   33
+  ],
+  "resource.k8s.io/v1beta1/DeviceClass": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta1/DeviceClassList": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta1/ResourceClaim": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta1/ResourceClaimList": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta1/ResourceClaimTemplate": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta1/ResourceClaimTemplateList": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta1/ResourceSlice": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta1/ResourceSliceList": [
+   32,
+   37
+  ],
+  "resource.k8s.io/v1beta2/DeviceClass": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1beta2/DeviceClassList": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1beta2/DeviceTaintRule": [
+   36,
+   37
+  ],
+  "resource.k8s.io/v1beta2/DeviceTaintRuleList": [
+   36,
+   37
+  ],
+  "resource.k8s.io/v1beta2/ResourceClaim": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1beta2/ResourceClaimList": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1beta2/ResourceClaimTemplate": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1beta2/ResourceClaimTemplateList": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1beta2/ResourceSlice": [
+   33,
+   37
+  ],
+  "resource.k8s.io/v1beta2/ResourceSliceList": [
+   33,
+   37
+  ],
+  "scheduling.k8s.io/v1/PriorityClass": [
+   16,
+   37
+  ],
+  "scheduling.k8s.io/v1/PriorityClassList": [
+   16,
+   37
+  ],
+  "scheduling.k8s.io/v1alpha1/PriorityClass": [
+   16,
+   22
+  ],
+  "scheduling.k8s.io/v1alpha1/PriorityClassList": [
+   16,
+   22
+  ],
+  "scheduling.k8s.io/v1alpha1/Workload": [
+   35,
+   35
+  ],
+  "scheduling.k8s.io/v1alpha1/WorkloadList": [
+   35,
+   35
+  ],
+  "scheduling.k8s.io/v1alpha2/PodGroup": [
+   36,
+   36
+  ],
+  "scheduling.k8s.io/v1alpha2/PodGroupList": [
+   36,
+   36
+  ],
+  "scheduling.k8s.io/v1alpha2/Workload": [
+   36,
+   36
+  ],
+  "scheduling.k8s.io/v1alpha2/WorkloadList": [
+   36,
+   36
+  ],
+  "scheduling.k8s.io/v1alpha3/CompositePodGroup": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1alpha3/CompositePodGroupList": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1alpha3/PodGroup": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1alpha3/PodGroupList": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1alpha3/Workload": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1alpha3/WorkloadList": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1beta1/PodGroup": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1beta1/PodGroupList": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1beta1/PriorityClass": [
+   16,
+   21
+  ],
+  "scheduling.k8s.io/v1beta1/PriorityClassList": [
+   16,
+   21
+  ],
+  "scheduling.k8s.io/v1beta1/Workload": [
+   37,
+   37
+  ],
+  "scheduling.k8s.io/v1beta1/WorkloadList": [
+   37,
+   37
+  ],
+  "settings.k8s.io/v1alpha1/PodPreset": [
+   16,
+   19
+  ],
+  "settings.k8s.io/v1alpha1/PodPresetList": [
+   16,
+   19
+  ],
+  "storage.k8s.io/v1/CSIDriver": [
+   18,
+   37
+  ],
+  "storage.k8s.io/v1/CSIDriverList": [
+   18,
+   37
+  ],
+  "storage.k8s.io/v1/CSINode": [
+   17,
+   37
+  ],
+  "storage.k8s.io/v1/CSINodeList": [
+   17,
+   37
+  ],
+  "storage.k8s.io/v1/CSIStorageCapacity": [
+   24,
+   37
+  ],
+  "storage.k8s.io/v1/CSIStorageCapacityList": [
+   24,
+   37
+  ],
+  "storage.k8s.io/v1/StorageClass": [
+   16,
+   37
+  ],
+  "storage.k8s.io/v1/StorageClassList": [
+   16,
+   37
+  ],
+  "storage.k8s.io/v1/VolumeAttachment": [
+   16,
+   37
+  ],
+  "storage.k8s.io/v1/VolumeAttachmentList": [
+   16,
+   37
+  ],
+  "storage.k8s.io/v1/VolumeAttributesClass": [
+   34,
+   37
+  ],
+  "storage.k8s.io/v1/VolumeAttributesClassList": [
+   34,
+   37
+  ],
+  "storage.k8s.io/v1alpha1/CSIStorageCapacity": [
+   21,
+   23
+  ],
+  "storage.k8s.io/v1alpha1/CSIStorageCapacityList": [
+   21,
+   23
+  ],
+  "storage.k8s.io/v1alpha1/VolumeAttachment": [
+   16,
+   22
+  ],
+  "storage.k8s.io/v1alpha1/VolumeAttachmentList": [
+   16,
+   22
+  ],
+  "storage.k8s.io/v1alpha1/VolumeAttributesClass": [
+   29,
+   34
+  ],
+  "storage.k8s.io/v1alpha1/VolumeAttributesClassList": [
+   29,
+   34
+  ],
+  "storage.k8s.io/v1beta1/CSIDriver": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/CSIDriverList": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/CSINode": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/CSINodeList": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/CSIStorageCapacity": [
+   21,
+   26
+  ],
+  "storage.k8s.io/v1beta1/CSIStorageCapacityList": [
+   21,
+   26
+  ],
+  "storage.k8s.io/v1beta1/StorageClass": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/StorageClassList": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/VolumeAttachment": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/VolumeAttachmentList": [
+   16,
+   21
+  ],
+  "storage.k8s.io/v1beta1/VolumeAttributesClass": [
+   31,
+   36
+  ],
+  "storage.k8s.io/v1beta1/VolumeAttributesClassList": [
+   31,
+   36
+  ],
+  "storagemigration.k8s.io/v1/StorageVersionMigration": [
+   37,
+   37
+  ],
+  "storagemigration.k8s.io/v1/StorageVersionMigrationList": [
+   37,
+   37
+  ],
+  "storagemigration.k8s.io/v1alpha1/StorageVersionMigration": [
+   30,
+   34
+  ],
+  "storagemigration.k8s.io/v1alpha1/StorageVersionMigrationList": [
+   30,
+   34
+  ],
+  "storagemigration.k8s.io/v1beta1/StorageVersionMigration": [
+   35,
+   37
+  ],
+  "storagemigration.k8s.io/v1beta1/StorageVersionMigrationList": [
+   35,
+   37
+  ],
+  "v1/Binding": [
+   16,
+   37
+  ],
+  "v1/ComponentStatus": [
+   16,
+   37
+  ],
+  "v1/ComponentStatusList": [
+   16,
+   37
+  ],
+  "v1/ConfigMap": [
+   16,
+   37
+  ],
+  "v1/ConfigMapList": [
+   16,
+   37
+  ],
+  "v1/Endpoints": [
+   16,
+   37
+  ],
+  "v1/EndpointsList": [
+   16,
+   37
+  ],
+  "v1/EphemeralContainers": [
+   21,
+   21
+  ],
+  "v1/Event": [
+   16,
+   37
+  ],
+  "v1/EventList": [
+   16,
+   37
+  ],
+  "v1/LimitRange": [
+   16,
+   37
+  ],
+  "v1/LimitRangeList": [
+   16,
+   37
+  ],
+  "v1/Namespace": [
+   16,
+   37
+  ],
+  "v1/NamespaceList": [
+   16,
+   37
+  ],
+  "v1/Node": [
+   16,
+   37
+  ],
+  "v1/NodeList": [
+   16,
+   37
+  ],
+  "v1/PersistentVolume": [
+   16,
+   37
+  ],
+  "v1/PersistentVolumeClaim": [
+   16,
+   37
+  ],
+  "v1/PersistentVolumeClaimList": [
+   16,
+   37
+  ],
+  "v1/PersistentVolumeList": [
+   16,
+   37
+  ],
+  "v1/Pod": [
+   16,
+   37
+  ],
+  "v1/PodList": [
+   16,
+   37
+  ],
+  "v1/PodTemplate": [
+   16,
+   37
+  ],
+  "v1/PodTemplateList": [
+   16,
+   37
+  ],
+  "v1/ReplicationController": [
+   16,
+   37
+  ],
+  "v1/ReplicationControllerList": [
+   16,
+   37
+  ],
+  "v1/ResourceQuota": [
+   16,
+   37
+  ],
+  "v1/ResourceQuotaList": [
+   16,
+   37
+  ],
+  "v1/Secret": [
+   16,
+   37
+  ],
+  "v1/SecretList": [
+   16,
+   37
+  ],
+  "v1/Service": [
+   16,
+   37
+  ],
+  "v1/ServiceAccount": [
+   16,
+   37
+  ],
+  "v1/ServiceAccountList": [
+   16,
+   37
+  ],
+  "v1/ServiceList": [
+   16,
+   37
+  ]
+ }
+}

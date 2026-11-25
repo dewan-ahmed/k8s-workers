@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Validate Kubernetes manifests against the OpenAPI schema of any Kubernetes release from 1.16 through 1.37.">
+  <title>Kubernetes Schema Validator</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <span class="brand"><span class="brand-icon" aria-hidden="true">✦</span> k8s.workers.dev</span>
+      <a href="https://kubernetes.io/docs/reference/kubernetes-api/">API reference ↗</a>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">03 / UPGRADE TOOLS</p>
+      <h1>Kubernetes<br><span>schema validator</span></h1>
+      <p>Catch typos, unknown fields, wrong types, and missing required fields before <code>kubectl apply</code>. Validate against the OpenAPI schema of the Kubernetes release you run, plus any CustomResourceDefinitions you include.</p>
+    </section>
+    <form id="validator" class="panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">01 / INPUT</p><h2>Validate your manifests</h2></div>
+        <div class="version">
+          <label for="version">Kubernetes version</label>
+          <select name="version" id="version" aria-describedby="version-help" disabled required><option>Loading…</option></select>
+          <p id="version-help" class="hint">Choose the version your cluster runs.</p>
+        </div>
+      </div>
+      <label for="manifest">Manifest or rendered Helm output</label>
+      <textarea id="manifest" name="manifest" rows="6" placeholder="Paste one or more manifests here" spellcheck="false" aria-describedby="manifest-help" required></textarea>
+      <p id="manifest-help" class="hint">Multi-document YAML, JSON, and List objects supported · 2 MiB max · Avoid including secrets</p>
+      <div class="check-actions">
+        <button id="check" type="submit" class="primary" disabled>Validate <span aria-hidden="true">→</span></button>
+        <button id="example" type="button" class="secondary" disabled>Try example</button>
+      </div>
+      <p id="check-status" class="status" role="status"></p>
+    </form>
+    <section id="report" class="panel" aria-labelledby="results-title" hidden>
+      <div class="panel-heading">
+        <div><p class="eyebrow">02 / RESULTS</p><h2 id="results-title" tabindex="-1">Validation report</h2></div>
+        <span id="report-target" class="target-tag"></span>
+      </div>
+      <div class="metrics">
+        <div><strong id="valid-count"></strong><span>Valid</span></div>
+        <div><strong id="invalid-count"></strong><span>Invalid</span></div>
+        <div><strong id="skipped-count"></strong><span>Not validated</span></div>
+      </div>
+      <p id="next-step"></p>
+      <details id="warnings" hidden open><summary id="warning-title"></summary><ul id="warning-list"></ul></details>
+      <div id="resources"></div>
+    </section>
+    <section id="ci" class="panel ci-docs" aria-labelledby="ci-title">
+      <h2 id="ci-title">Use from CI / terminal</h2>
+      <p>Send a manifest or rendered Helm output directly to <code>POST /api/validate</code>:</p>
+      <pre><code>curl -fsS 'https://schema.k8s.workers.dev/api/validate?version=1.30' \
+  -H 'Content-Type: application/yaml' --data-binary @manifest.yaml -o report.json</code></pre>
+      <p>Raw uploads require the <code>version</code> query parameter and also accept <code>application/x-yaml</code>, <code>text/yaml</code>, and <code>text/plain</code>. For JSON, include the version and manifest in the body:</p>
+      <pre><code>curl -fsS https://schema.k8s.workers.dev/api/validate \
+  -H 'Content-Type: application/json' \
+  --data-binary '{"version":"1.30","manifest":"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app"}'</code></pre>
+      <p>The JSON report includes <code>targetVersion</code>, <code>release</code>, <code>scannedResources</code>, <code>valid</code>, <code>invalid</code>, <code>skipped</code>, <code>resources</code> (each with <code>status</code>, <code>errors</code>, and <code>notes</code>), and <code>warnings</code>.</p>
+      <p>HTTP <code>200</code> means a report was produced, even when resources are invalid. Errors return JSON with an <code>error</code> message: <code>400</code> invalid input, <code>403</code> cross-origin POST, <code>405</code> wrong method, <code>413</code> size or resource limit, <code>415</code> unsupported content type, <code>429</code> rate limit, or <code>500</code> unexpected failure. See <a href="/api/config"><code>GET /api/config</code></a> for supported versions.</p>
+      <p>Fail CI on invalid or unvalidated resources and YAML warnings:</p>
+      <pre><code>jq -e '.scannedResources &gt; 0 and .invalid == 0 and .skipped == 0 and (.warnings | length == 0)' report.json</code></pre>
+    </section>
+    <footer>Schemas from the Kubernetes OpenAPI spec of each release's latest patch. This checks structure and common API naming rules, not admission webhooks, CEL rules, or cluster state.</footer>
+  </main>
+</body>
+</html>

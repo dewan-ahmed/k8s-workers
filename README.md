@@ -81,6 +81,7 @@ Results are provided as is, without warranty. Verify findings against official K
 | Workspace | Purpose |
 | --- | --- |
 | `apps/deprecations` | TypeScript Worker, site assets, parsers and API |
+| `apps/schema` | [Schema validator](https://schema.k8s.workers.dev) Worker, generated per-release OpenAPI schemas, and API |
 | `packages/k8s-data` | Shared API lifecycle catalog keyed by API version and kind |
 | `packages/email` | Shared Cloudflare Email Sending binding adapter |
 

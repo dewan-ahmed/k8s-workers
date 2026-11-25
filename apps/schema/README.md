@@ -1,0 +1,21 @@
+# Kubernetes schema validator
+
+Validates manifests (including rendered Helm output, multi-document YAML, JSON, and `List` objects) against the OpenAPI schema of a Kubernetes release from 1.16 through 1.37. Live at https://schema.k8s.workers.dev.
+
+It reports unknown fields, wrong types, missing required fields, invalid quantities, a few common enum values that the published specs omit, invalid object names and label keys, workload selectors that do not match their pod template, and API versions the selected release does not serve. Custom resources are validated against CustomResourceDefinitions included in the same input; `x-kubernetes-validations` (CEL) rules, admission webhooks, and cluster state are not checked.
+
+Run `npm run dev --workspace @k8s-workers/schema` from the repository root. Deploy with `npm run deploy --workspace @k8s-workers/schema`.
+
+## API
+
+`POST /api/validate` accepts JSON (`{"version": "1.30", "manifest": "..."}`) or a raw manifest with `?version=1.30` and `Content-Type: application/yaml`, `application/x-yaml`, `text/yaml`, or `text/plain`. Input is limited to 2 MiB and 500 resources. `GET /api/config` returns the supported version range.
+
+## Schemas
+
+`public/schemas/1.<minor>.json` holds compacted schemas from the latest patch of each release: the OpenAPI v3 spec from 1.27 and the v2 spec before that, with descriptions removed. `api-index.json` records which releases serve each API version and kind. Regenerate both after changing the release list:
+
+```sh
+GITHUB_TOKEN=$(gh auth token) npm run generate --workspace @k8s-workers/schema
+```
+
+`GITHUB_TOKEN` is optional; it avoids GitHub API rate limits.
