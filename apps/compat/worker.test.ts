@@ -4,12 +4,19 @@ import { maxRequestBytes } from './checker';
 
 const base = 'https://compat.k8s.workers.dev';
 const limit = vi.fn(async () => ({ success: true }));
-const env = { CHECK_LIMIT: { limit } };
+const assets = { fetch: vi.fn(async (_request: Request) => new Response(null, { status: 404 })) };
+const env = { ASSETS: assets, CHECK_LIMIT: { limit } };
 const post = (payload: unknown, headers: Record<string, string> = {}) => new Request(`${base}/api/check`, {
   method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json', ...headers },
 });
 
 describe('compatibility Worker', () => {
+  it('serves the home page through the asset binding without rewriting errors', async () => {
+    const request = new Request(base);
+    expect((await worker.fetch(request, env)).status).toBe(404);
+    expect(assets.fetch).toHaveBeenCalledWith(request);
+  });
+
   it('exposes configuration and returns an uncached compatibility report', async () => {
     const config = await worker.fetch(new Request(`${base}/api/config`), env);
     expect(await config.json()).toMatchObject({ minimumMinor: expect.any(Number), latestMinor: expect.any(Number) });

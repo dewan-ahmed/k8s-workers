@@ -1,8 +1,10 @@
 import { latestMinor, minimumMinor } from '@k8s-workers/k8s-data';
+import { appendSiteFooter } from '@k8s-workers/ui';
 import { checkCompatibility, maxRequestBytes } from './checker';
 import { InputError } from './manifest';
 
 interface Env {
+  ASSETS: Pick<Fetcher, 'fetch'>;
   CHECK_LIMIT: RateLimit;
 }
 
@@ -38,6 +40,10 @@ async function readInput(request: Request): Promise<Record<string, unknown>> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+      const asset = await env.ASSETS.fetch(request);
+      return request.method === 'GET' && asset.ok ? appendSiteFooter(asset) : asset;
+    }
     const config = url.pathname === '/api/config';
     if (!config && url.pathname !== '/api/check') return json({ error: 'Not found.' }, 404);
     const method = config ? 'GET' : 'POST';

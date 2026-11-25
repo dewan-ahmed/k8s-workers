@@ -62,7 +62,8 @@ details ul { margin: .5rem 0 0; padding-left: 1.25rem; }
 .finding p { margin-top: .3rem; }
 .finding a { margin-left: .75rem; }
 footer { padding: 0 0 2rem; }
-footer p + p { margin-top: .4rem; }
+footer nav { margin-top: .4rem; }
+.site-credit { margin-top: .75rem; }
 @media (max-width: 36rem) {
   .versions, .overview { grid-template-columns: 1fr; }
   .topbar-inner { font-size: .75rem; }
