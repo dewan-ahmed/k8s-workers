@@ -197,8 +197,10 @@ metadata: { name: unknown }
     expect(evaluate({ not: { additionalProperties: pattern } }, { colour: 'green' })).toBe('skipped');
     expect(evaluate(pattern, 12)).toBe('valid');
     expect(evaluate({ format: 'app-defined' })).toBe('valid');
-    expect(evaluate({ format: 'k8s-short-name' }, 'green', 33)).toBe('valid');
-    expect(evaluate({ format: 'k8s-short-name' }, 'green', 34)).toBe('skipped');
+    expect(evaluate({ format: 'k8s-short-name' }, 'green', 34)).toBe('valid');
+    expect(evaluate({ format: 'k8s-short-name' }, 'green', 35)).toBe('skipped');
+    expect(evaluate({ format: 'datetime' }, '2025-02-28T12:00:00,5Z')).toBe('skipped');
+    expect(evaluate({ format: 'date-time' }, '2025-02-28T24:00:00Z')).toBe('skipped');
   });
 
   it('uses structural defaults in alternative checks without mutating the input or sharing copies', () => {
@@ -228,6 +230,31 @@ metadata: { name: unknown }
     }, budget, { rules: 0, patterns: 0 }, { targetMinor: 37, defaulting: true });
     expect(validator.validate({ mode: null }, nullable).unchecked).toBe(Unchecked.None);
     expect(validator.validate({}, nullable).unchecked).toBe(Unchecked.Pattern);
+  });
+
+  it('prunes non-nullable null fields and map entries without shifting array items', () => {
+    const budget = new ValidationBudget();
+    const schema = fromCrdSchema({
+      type: 'object',
+      properties: {
+        settings: {
+          type: 'object', maxProperties: 2,
+          required: ['mode', 'nullableMode'],
+          properties: {
+            mode: { type: 'string', default: 'safe' },
+            nullableMode: { type: 'string', nullable: true },
+            description: { type: 'string' },
+          },
+        },
+        labels: { type: 'object', additionalProperties: { type: 'string' }, maxProperties: 0 },
+        items: { type: 'array', items: { type: 'string' }, minItems: 1 },
+      },
+    }, budget, { rules: 0, patterns: 0 }, { targetMinor: 37, defaulting: true });
+    const value = { settings: { description: null, nullableMode: null }, labels: { extra: null }, items: [null] };
+    const result = new Validator({}, budget).validate(value, schema);
+    expect(result.issues).toEqual([{ path: ['items', 0], message: expect.stringContaining('expected string, got null') }]);
+    expect(value.settings).toEqual({ description: null, nullableMode: null });
+    expect(value.labels).toEqual({ extra: null });
   });
 
   it('expands List objects, accepts JSON, and keeps going past invalid YAML documents', async () => {

@@ -19,7 +19,7 @@ export interface Schema {
   maxLength?: number;
   uncheckedString?: Unchecked;
   defaultValue?: unknown;
-  hasDefaults?: true;
+  normalizeCrd?: true;
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
@@ -86,37 +86,41 @@ export class Validator {
   constructor(private readonly definitions: Record<string, Schema>, private readonly budget: ValidationBudget) {}
 
   validate(value: unknown, schema: Schema): Evaluation {
-    return this.evaluate(this.withDefaults(value, schema, 0), schema, [], 0);
+    return this.evaluate(this.normalizeCrd(value, schema, 0), schema, [], 0);
   }
 
-  private withDefaults(value: unknown, schema: Schema, depth: number): unknown {
-    if (!schema.hasDefaults) return value;
+  private normalizeCrd(value: unknown, schema: Schema, depth: number): unknown {
+    if (!schema.normalizeCrd) return value;
     this.budget.use(depth);
     if ((value === undefined || (value === null && !schema.nullable)) && schema.defaultValue !== undefined) {
       value = schema.defaultValue;
     }
     if (Array.isArray(value)) {
       const items = schema.items;
-      if (!items?.hasDefaults) return value;
+      if (!items?.normalizeCrd) return value;
       this.budget.use(depth, value.length);
-      return value.map(item => this.withDefaults(item, items, depth + 1));
+      return value.map(item => this.normalizeCrd(item, items, depth + 1));
     }
     if (value === null || typeof value !== 'object') return value;
 
     const properties = schema.properties ?? {};
+    const additional = typeof schema.additionalProperties === 'object' ? schema.additionalProperties : undefined;
+    if (!schema.properties && !additional) return value;
     const propertyKeys = Object.keys(properties);
-    const keys = Object.keys(value);
+    const object = value as Record<string, unknown>;
+    const keys = Object.keys(object);
     this.budget.use(depth, propertyKeys.length + keys.length);
-    const copy = Object.assign(Object.create(null), value) as Record<string, unknown>;
-    for (const key of propertyKeys) {
-      const field = this.withDefaults(copy[key], properties[key], depth + 1);
-      if (field !== undefined) copy[key] = field;
+    const copy: Record<string, unknown> = Object.create(null);
+    for (const key of keys) {
+      const field = object[key];
+      const child = Object.hasOwn(properties, key) ? properties[key] : additional;
+      if (field === null && child?.normalizeCrd && !child.nullable && child.defaultValue === undefined) continue;
+      copy[key] = child ? this.normalizeCrd(field, child, depth + 1) : field;
     }
-    const additional = schema.additionalProperties;
-    if (typeof additional === 'object' && additional.hasDefaults) {
-      this.budget.use(depth, keys.length);
-      for (const key of keys) {
-        if (!Object.hasOwn(properties, key)) copy[key] = this.withDefaults(copy[key], additional, depth + 1);
+    for (const key of propertyKeys) {
+      const child = properties[key];
+      if (!Object.hasOwn(object, key) && child.defaultValue !== undefined) {
+        copy[key] = this.normalizeCrd(undefined, child, depth + 1);
       }
     }
     return copy;
@@ -246,7 +250,9 @@ export class Validator {
     for (const field of schema.required ?? []) {
       if (issues.length >= maxIssues) break;
       this.budget.use(depth);
-      if (!Object.hasOwn(value, field) || value[field] === undefined || value[field] === null) add(`missing required field "${field}"`);
+      if (!Object.hasOwn(value, field) || value[field] === undefined || (value[field] === null && !schema.normalizeCrd)) {
+        add(`missing required field "${field}"`);
+      }
     }
     const { properties, additionalProperties } = schema;
     const closed = additionalProperties === false ||
@@ -276,7 +282,7 @@ const crdKeys = [
 // Kubernetes ignores unrecognized formats; these recognized formats are not checked here.
 const uncheckedStringFormats = new Set([
   'bsonobjectid', 'uri', 'email', 'hostname', 'ipv4', 'ipv6', 'cidr', 'mac', 'uuid', 'uuid3', 'uuid4', 'uuid5',
-  'isbn', 'isbn10', 'isbn13', 'creditcard', 'ssn', 'hexcolor', 'rgbcolor', 'date', 'duration',
+  'isbn', 'isbn10', 'isbn13', 'creditcard', 'ssn', 'hexcolor', 'rgbcolor', 'date', 'datetime', 'duration',
 ]);
 
 interface CrdOptions {
@@ -313,15 +319,19 @@ export function fromCrdSchema(
   if (typeof source.format === 'string') {
     const format = source.format.replaceAll('-', '');
     if (!schema.type || schema.type === 'string') {
-      if (format === 'byte' || format === 'datetime') schema.format = format === 'datetime' ? 'date-time' : 'byte';
+      // The name formats require compatibility 1.34, defaulting to the server minor minus one.
+      if (format === 'byte') schema.format = 'byte';
       else if (uncheckedStringFormats.has(format) ||
-        (options.targetMinor >= 34 && (format === 'k8sshortname' || format === 'k8slongname'))) {
+        (options.targetMinor >= 35 && (format === 'k8sshortname' || format === 'k8slongname'))) {
         schema.uncheckedString = (schema.uncheckedString ?? Unchecked.None) | Unchecked.Format;
       }
     }
     if (source.format === 'int32' && (!schema.type || schema.type === 'integer')) schema.format = 'int32';
   }
-  if (options.defaulting && source.default != null) schema.defaultValue = source.default;
+  if (options.defaulting) {
+    schema.normalizeCrd = true;
+    if (source.default != null) schema.defaultValue = source.default;
+  }
   if (Array.isArray(source['x-kubernetes-validations'])) counter.rules += source['x-kubernetes-validations'].length;
   const convert = (value: unknown) => fromCrdSchema(value, budget, counter, options, depth + 1);
   if (source.properties && typeof source.properties === 'object') {
@@ -341,8 +351,5 @@ export function fromCrdSchema(
     // Untyped schemas inside anyOf/allOf/oneOf/not only add value validations; they never prune fields.
     schema.additionalProperties = schema.type !== 'object' || Boolean(schema['x-kubernetes-preserve-unknown-fields']);
   }
-  if (schema.defaultValue !== undefined || schema.items?.hasDefaults ||
-    (typeof schema.additionalProperties === 'object' && schema.additionalProperties.hasDefaults) ||
-    Object.values(schema.properties ?? {}).some(property => property.hasDefaults)) schema.hasDefaults = true;
   return schema;
 }
