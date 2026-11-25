@@ -4,6 +4,7 @@ const target = byId('target');
 const manifest = byId('manifest');
 const chart = byId('chart');
 const check = byId('check');
+const tryExample = byId('example');
 const report = byId('report');
 const emailForm = byId('email-form');
 const send = byId('send');
@@ -45,11 +46,6 @@ function syncInputs() {
 }
 
 checker.addEventListener('input', syncInputs);
-byId('example').addEventListener('click', () => {
-  manifest.value = example;
-  syncInputs();
-  manifest.focus();
-});
 
 async function api(path, options) {
   const response = await fetch(path, options);
@@ -80,18 +76,27 @@ function element(tag, text, className) {
   return node;
 }
 
-function render(data) {
+function render(data, isExample) {
+  const title = byId('results-title');
+  title.textContent = isExample ? 'Example upgrade report' : 'Upgrade report';
   byId('report-target').textContent = `Kubernetes ${data.targetVersion}`;
   byId('scanned-count').textContent = data.scannedResources;
   byId('removed-count').textContent = data.removed;
   byId('deprecated-count').textContent = data.deprecated;
+  byId('next-step').textContent = data.removed
+    ? 'Fix removed APIs before upgrading. Use the migration notes below, then scan again.'
+    : data.deprecated
+      ? 'Plan to migrate deprecated APIs before they are removed. See the migration notes below.'
+      : data.scannedResources
+        ? 'Review any scan warnings and test your workloads on the target version before upgrading.'
+        : 'Check your input for Kubernetes resources, then scan again.';
   byId('warnings').hidden = !data.warnings.length;
   byId('warning-title').textContent = `Scan warnings (${data.warnings.length})`;
   byId('warning-list').replaceChildren(...data.warnings.map(warning => element('li', warning)));
   byId('empty').hidden = !!data.findings.length;
   byId('empty').textContent = data.scannedResources
     ? 'No cataloged removals or deprecations found for this target.'
-    : 'No resources scanned. Check the input and the warnings above.';
+    : 'No Kubernetes resources were scanned.';
   byId('findings').replaceChildren(...data.findings.map(finding => {
     const card = element('article', '', 'finding');
     const identity = [finding.namespace, finding.name].filter(Boolean).join('/');
@@ -111,20 +116,17 @@ function render(data) {
     );
     return card;
   }));
-  emailForm.hidden = !data.scannedResources;
+  emailForm.hidden = !config.emailEnabled || !data.scannedResources;
   send.disabled = !config.emailEnabled;
-  notice('email-status', config.emailEnabled ? '' : 'Email sending has not been configured on this Worker.');
+  notice('email-status', '');
   report.hidden = false;
-  byId('results-title').focus();
+  title.focus({ preventScroll: true });
+  report.scrollIntoView({ block: 'start' });
 }
 
-checker.addEventListener('submit', async event => {
-  event.preventDefault();
+async function runCheck(input, isExample = false) {
   const current = revision;
-  const input = checker.elements.mode.value === 'chart'
-    ? { chart: chart.files[0], targetVersion: target.value }
-    : { manifest: manifest.value, targetVersion: target.value };
-  check.disabled = true;
+  check.disabled = tryExample.disabled = true;
   report.hidden = true;
   snapshot = undefined;
   notice('check-status', 'Scanning…');
@@ -132,14 +134,24 @@ checker.addEventListener('submit', async event => {
     const data = await api('/api/check', requestPayload(input));
     if (current !== revision) return;
     snapshot = input;
-    render(data);
     notice('check-status', '');
+    render(data, isExample);
   } catch (error) {
     if (current === revision) notice('check-status', error.message, true);
   } finally {
-    check.disabled = false;
+    check.disabled = tryExample.disabled = false;
   }
+}
+
+checker.addEventListener('submit', event => {
+  event.preventDefault();
+  const input = checker.elements.mode.value === 'chart'
+    ? { chart: chart.files[0], targetVersion: target.value }
+    : { manifest: manifest.value, targetVersion: target.value };
+  runCheck(input);
 });
+
+tryExample.addEventListener('click', () => runCheck({ manifest: example, targetVersion: target.value }, true));
 
 emailForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -163,7 +175,7 @@ try {
     const version = `1.${config.latestMinor - i}`;
     return new Option(version, version);
   }));
-  check.disabled = target.disabled = false;
+  check.disabled = tryExample.disabled = target.disabled = false;
 } catch (error) {
   notice('check-status', `Could not load checker configuration: ${error.message}`, true);
 }
