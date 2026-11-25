@@ -93,6 +93,82 @@ items: &loop
   });
 });
 
+describe('messy manifest input', () => {
+  const deployment = (i: number) => `apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: app-${i}
+  namespace: team-${i % 7}
+  labels: {app: web}  # flow style below the resource fields is fine
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          image: "nginx:1.${i}"
+          args: |
+            --port=80
+            ---not-a-separator
+`;
+
+  it('scans a large multi-document manifest without the full YAML parser', () => {
+    const input = Array.from({ length: 6000 }, (_, i) => deployment(i)).join('---\n');
+    expect(input.length).toBeGreaterThan(1.5 * 1024 * 1024);
+    const scan = scanManifest(input);
+    expect(scan.resources).toHaveLength(6000);
+    expect(scan.resources[5999]).toMatchObject({ name: 'app-5999', namespace: 'team-0', document: 6000, line: 16 * 5999 + 1 });
+    expect(scan.warnings).toEqual([]);
+  });
+
+  it('reads JSON objects, arrays, concatenated objects and NDJSON', () => {
+    const job = (name: string) => JSON.stringify({ apiVersion: 'batch/v1beta1', kind: 'CronJob', metadata: { name } });
+    expect(scanManifest(job('one')).resources).toMatchObject([{ name: 'one', document: 1, line: 1 }]);
+    expect(scanManifest(`[${job('a')},\n${job('b')}]`).resources).toMatchObject([{ name: 'a', line: 1 }, { name: 'b', line: 2 }]);
+    expect(scanManifest(`${job('a')}\n${job('b')}`).resources).toMatchObject([{ name: 'a', document: 1 }, { name: 'b', document: 2, line: 2 }]);
+    const list = JSON.stringify({ apiVersion: 'v1', kind: 'DeploymentList', items: [JSON.parse(job('x'))] }, null, 2);
+    expect(scanManifest(list).resources).toMatchObject([{ name: 'x', line: 5 }]);
+  });
+
+  it('follows anchors, aliases and merge keys within a document', () => {
+    const scan = scanManifest(`apiVersion: v1
+kind: List
+x-base: &base
+  apiVersion: policy/v1beta1
+  kind: PodDisruptionBudget
+items:
+  - <<: *base
+    metadata: {name: merged}
+  - apiVersion: &v batch/v1beta1
+    kind: CronJob
+    metadata: {name: aliased}
+`);
+    expect(scan.resources).toMatchObject([
+      { apiVersion: 'policy/v1beta1', name: 'merged', line: 7 },
+      { apiVersion: 'batch/v1beta1', name: 'aliased', line: 9 },
+    ]);
+    expect(scan.warnings).toEqual([]);
+  });
+
+  it('keeps later documents after a broken one and counts invalid documents', () => {
+    const scan = scanManifest(`apiVersion: "unterminated\nkind: Job\n---\n${deployment(1)}---\n\tkind: Tabbed\n`);
+    expect(scan.resources).toMatchObject([{ name: 'app-1', document: 2 }]);
+    expect(scan.invalidDocuments).toBe(2);
+  });
+
+  it('caps warnings and the number of documents', () => {
+    const report = makeReport(scanManifest('a: 1\n---\n'.repeat(500)), 25, 'manifest');
+    expect(report.warnings).toHaveLength(51);
+    expect(report.warnings.at(-1)).toBe('450 more warnings not shown.');
+    expect(() => scanManifest('---\n'.repeat(20001))).toThrow('more than 20000 YAML documents');
+  });
+
+  it('rejects input that needs too much full YAML parsing', () => {
+    expect(() => scanManifest('a: [\n---\n'.repeat(1000))).toThrow('Too much of this input needs the full YAML parser');
+    const deep = scanManifest('apiVersion: ' + '['.repeat(5000) + ']'.repeat(5000));
+    expect(deep.warnings).toEqual(['manifest, document 1: skipped YAML nested more than 64 levels deep (line 1).']);
+  });
+});
+
 describe('chart scans', () => {
   it('checks literal branch versions, CRDs and packaged dependencies, but not helpers or values', async () => {
     const dependency = await chart({

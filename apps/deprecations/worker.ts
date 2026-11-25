@@ -94,7 +94,11 @@ async function reportFor(input: CheckInput): Promise<Report> {
   if (new TextEncoder().encode(manifest).length > maxInputBytes) {
     throw new InputError(`Manifest exceeds 2 MiB. ${splitManifest}`, 413);
   }
-  return makeReport(scanManifest(manifest), target, 'manifest');
+  const scan = scanManifest(manifest);
+  if (!scan.resources.length && scan.invalidDocuments) {
+    throw new InputError(`The manifest could not be parsed as YAML or JSON. ${scan.warnings[0]}`, 422);
+  }
+  return makeReport(scan, target, 'manifest');
 }
 
 function reportEmail(report: Report) {

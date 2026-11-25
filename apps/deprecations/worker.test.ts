@@ -56,9 +56,12 @@ describe('checker API', () => {
     const oversized = await worker.fetch(rawRequest(path, 'x'.repeat(2 * 1024 * 1024 + 1)), env());
     expect(oversized.status).toBe(413);
     const invalid = await worker.fetch(rawRequest(path, 'apiVersion: [unterminated'), env());
-    expect(invalid.status).toBe(200);
-    expect(await invalid.json()).toMatchObject({
-      scannedResources: 0, warnings: [expect.stringContaining('skipped invalid YAML')],
+    expect(invalid.status).toBe(422);
+    expect(await invalid.json()).toEqual({ error: expect.stringContaining('skipped invalid YAML') });
+    const partial = await worker.fetch(rawRequest(path, `apiVersion: [unterminated\n---\n${manifest}`), env());
+    expect(partial.status).toBe(200);
+    expect(await partial.json()).toMatchObject({
+      scannedResources: 1, warnings: [expect.stringContaining('document 1: skipped invalid YAML')],
     });
   });
 
