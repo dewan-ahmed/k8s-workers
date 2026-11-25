@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { extract } from 'tar-stream';
-import { isMap, isScalar, isSeq, LineCounter, parseAllDocuments, type Node } from 'yaml';
+import { isAlias, isMap, isNode, isScalar, isSeq, LineCounter, parseAllDocuments, visit as visitYaml, type Alias, type Node } from 'yaml';
 import { findDeprecation } from '@k8s-workers/k8s-data';
 
 export const maxInputBytes = 2 * 1024 * 1024;
@@ -43,43 +43,79 @@ export function scanManifest(input: string, source = 'manifest'): Scan {
   const warnings: string[] = [];
   const lineCounter = new LineCounter();
   const docs = parseAllDocuments(input, { lineCounter, logLevel: 'silent' });
-
-  function visit(node: Node | null, document: number, depth: number) {
-    if (!node) return;
-    if (depth > 32) throw new InputError('Resource list is nested too deeply.');
-    if (isSeq(node)) {
-      node.items.forEach(item => visit(item as Node | null, document, depth + 1));
-      return;
-    }
-    if (!isMap(node)) return;
-    const apiVersion = identifier(scalar(node.get('apiVersion', true)));
-    const kind = identifier(scalar(node.get('kind', true)));
-    const items = node.get('items', true);
-    if (kind === 'List' || (kind?.endsWith('List') && isSeq(items))) {
-      if (isSeq(items)) visit(items, document, depth + 1);
-      return;
-    }
-    if (!apiVersion || !kind) return;
-    const metadata = node.get('metadata', true);
-    addResource(resources, {
-      apiVersion, kind, source, document,
-      name: isMap(metadata) ? identifier(scalar(metadata.get('name', true))) : undefined,
-      namespace: isMap(metadata) ? identifier(scalar(metadata.get('namespace', true))) : undefined,
-      line: node.range ? lineCounter.linePos(node.range[0]).line : undefined,
-    });
-  }
+  let aliasReads = 0;
 
   for (const [i, doc] of docs.entries()) {
+    const document = i + 1;
+    const header = doc.range && doc.contents?.range ? input.slice(doc.range[0], doc.contents.range[0]) : '';
+    const location = (source === 'manifest'
+      ? identifier(/^---[ \t]*(?:#[^\r\n]*)?\r?\n# Source:[ \t]+([^\r\n]+)/.exec(header)?.[1])
+      : undefined) || source;
+
     if (doc.errors.length) {
       const error = doc.errors[0];
-      warnings.push(`${source}, document ${i + 1}: skipped invalid YAML (${error.code}, line ${lineCounter.linePos(error.pos[0]).line}).`);
+      warnings.push(`${location}, document ${document}: skipped invalid YAML (${error.code}, line ${lineCounter.linePos(error.pos[0]).line}).`);
       continue;
     }
-    const before = resources.length;
-    visit(doc.contents, i + 1, 0);
-    if (before === resources.length && doc.contents && scalar(doc.contents) !== '' &&
-        !(isScalar(doc.contents) && doc.contents.value == null)) {
-      warnings.push(`${source}, document ${i + 1}: no literal apiVersion and kind found.`);
+
+    let aliases: WeakMap<Alias, Node> | undefined;
+    function resolve(node: unknown) {
+      if (!isAlias(node)) return node;
+      if (++aliasReads > maxResources * 5) throw new InputError('Too many YAML alias references in one scan.', 413);
+      if (!aliases) {
+        const anchors = new Map<string, Node>();
+        const index = new WeakMap<Alias, Node>();
+        visitYaml(doc, { Node(_key, item) {
+          if (isAlias(item)) {
+            const anchored = anchors.get(item.source);
+            if (anchored) index.set(item, anchored);
+          } else if (item.anchor) {
+            anchors.set(item.anchor, item);
+          }
+        } });
+        aliases = index;
+      }
+      return aliases.get(node);
+    }
+
+    function visit(inputNode: unknown, depth: number) {
+      if (depth > 32) throw new InputError('Resource list is nested too deeply.');
+      const node = resolve(inputNode);
+      const line = isNode(inputNode) && inputNode.range ? lineCounter.linePos(inputNode.range[0]).line : undefined;
+      const position = `${location}, document ${document}${line ? `, line ${line}` : ''}`;
+      if (isSeq(node) && node.items.length) {
+        node.items.forEach(item => visit(item, depth + 1));
+        return;
+      }
+      if (isMap(node)) {
+        const apiVersion = identifier(scalar(resolve(node.get('apiVersion', true))));
+        const kind = identifier(scalar(resolve(node.get('kind', true))));
+        const itemsNode = kind?.endsWith('List') ? node.get('items', true) : undefined;
+        const items = resolve(itemsNode);
+        if (isSeq(items)) {
+          if (items.items.length) visit(itemsNode, depth + 1);
+          else warnings.push(`${position}: resource list is empty.`);
+          return;
+        }
+        if (kind === 'List') {
+          warnings.push(`${position}: expected a resource list in items.`);
+          return;
+        }
+        if (apiVersion && kind) {
+          const metadata = resolve(node.get('metadata', true));
+          addResource(resources, {
+            apiVersion, kind, source: location, document, line,
+            name: isMap(metadata) ? identifier(scalar(resolve(metadata.get('name', true)))) : undefined,
+            namespace: isMap(metadata) ? identifier(scalar(resolve(metadata.get('namespace', true)))) : undefined,
+          });
+          return;
+        }
+      }
+      warnings.push(`${position}: no apiVersion and kind found.`);
+    }
+
+    if (doc.contents && !(isScalar(doc.contents) && (doc.contents.value == null || doc.contents.value === ''))) {
+      visit(doc.contents, 0);
     }
   }
   return { resources, warnings };

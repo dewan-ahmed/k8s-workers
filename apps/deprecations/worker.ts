@@ -20,6 +20,8 @@ interface CheckInput {
 
 const maxRequestBytes = maxInputBytes + 64 * 1024;
 const manifestContentTypes = new Set(['application/yaml', 'application/x-yaml', 'text/yaml', 'text/plain']);
+const splitManifest = 'Split the YAML at document separators (---) and check each batch separately.';
+const manifestRequestTooLarge = `Manifest request is too large. ${splitManifest}`;
 const json = (data: unknown, status = 200, headers?: HeadersInit) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
 const tooMany = () => json({ error: 'Too many requests. Try again in a minute.' }, 429, { 'Retry-After': '60' });
@@ -32,16 +34,16 @@ function targetMinor(value: unknown) {
   return minor;
 }
 
-async function boundedBody(request: Request) {
+async function boundedBody(request: Request, tooLarge: string) {
   if (Number(request.headers.get('Content-Length')) > maxRequestBytes) {
-    throw new InputError('Request is too large.', 413);
+    throw new InputError(tooLarge, 413);
   }
   if (!request.body) throw new InputError('Request body is required.');
   let bytes = 0;
   return new Response(request.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
       bytes += chunk.byteLength;
-      if (bytes > maxRequestBytes) throw new InputError('Request is too large.', 413);
+      if (bytes > maxRequestBytes) throw new InputError(tooLarge, 413);
       controller.enqueue(chunk);
     },
   })), { headers: { 'Content-Type': request.headers.get('Content-Type') ?? '' } });
@@ -60,9 +62,10 @@ async function readInput(request: Request, url: URL): Promise<CheckInput> {
     if (raw) {
       const targetVersion = url.searchParams.get('targetVersion');
       if (!targetVersion) throw new InputError('Add the targetVersion query parameter for raw manifests (for example, ?targetVersion=1.25).');
-      return { targetVersion, manifest: await (await boundedBody(request)).text() };
+      return { targetVersion, manifest: await (await boundedBody(request, manifestRequestTooLarge)).text() };
     }
-    const body = await boundedBody(request);
+    const body = await boundedBody(request, contentType === 'application/json'
+      ? manifestRequestTooLarge : 'Request is too large.');
     if (contentType === 'application/json') {
       const input: unknown = await body.json();
       if (input === null || typeof input !== 'object' || Array.isArray(input)) {
@@ -88,7 +91,9 @@ async function reportFor(input: CheckInput): Promise<Report> {
   if (input.chart) return makeReport(await scanChart(input.chart), target, 'chart');
   const { manifest } = input;
   if (typeof manifest !== 'string' || !manifest.trim()) throw new InputError('Paste a Kubernetes manifest to check.');
-  if (new TextEncoder().encode(manifest).length > maxInputBytes) throw new InputError('Manifest exceeds 2 MiB.', 413);
+  if (new TextEncoder().encode(manifest).length > maxInputBytes) {
+    throw new InputError(`Manifest exceeds 2 MiB. ${splitManifest}`, 413);
+  }
   return makeReport(scanManifest(manifest), target, 'manifest');
 }
 
