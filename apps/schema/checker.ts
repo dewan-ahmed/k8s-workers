@@ -1,6 +1,7 @@
 import { findDeprecation } from '@k8s-workers/k8s-data';
-import { isMap, isSeq, LineCounter, parseAllDocuments, type Node } from 'yaml';
+import { Composer, isMap, isSeq, LineCounter, Parser, type Node } from 'yaml';
 import apiIndex from './api-index.json';
+import { InputError, ValidationBudget } from './limits';
 import { formatPath, fromCrdSchema, objectMetaRef, Validator, type Issue, type Path, type Schema } from './validator';
 
 export const maxInputBytes = 2 * 1024 * 1024;
@@ -10,12 +11,6 @@ export interface SchemaSet {
   release: string;
   kinds: Record<string, string>;
   definitions: Record<string, Schema>;
-}
-
-export class InputError extends Error {
-  constructor(message: string, readonly status = 400) {
-    super(message);
-  }
 }
 
 export interface ResourceResult {
@@ -43,6 +38,7 @@ interface CrdVersion {
   schema?: Schema;
   served: boolean;
   rules: number;
+  patterns: number;
   source: string;
 }
 
@@ -81,19 +77,32 @@ function addKnownEnums(schemas: SchemaSet) {
   withEnums.add(schemas);
 }
 
-function parse(input: string) {
+function checkValueTree(value: unknown, budget: ValidationBudget, depth = 0) {
+  budget.use(depth, typeof value === 'string' ? 1 + Math.floor(value.length / 1024) : 1);
+  if (value !== null && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value)) {
+      if (key.length >= 1024) budget.use(depth, Math.floor(key.length / 1024));
+      checkValueTree(child, budget, depth + 1);
+    }
+  }
+}
+
+function parse(input: string, budget: ValidationBudget) {
   const lines = new LineCounter();
-  const docs = parseAllDocuments(input, {
-    lineCounter: lines, logLevel: 'silent', version: '1.1',
+  const parser = new Parser(lines.addNewLine);
+  const composer = new Composer({
+    logLevel: 'silent', version: '1.1',
     // Kubernetes decodes YAML 1.1 booleans and octals, but keeps timestamps as strings.
     customTags: tags => tags.filter(tag => typeof tag === 'object' && tag.tag !== 'tag:yaml.org,2002:timestamp'),
   });
   const candidates: Candidate[] = [];
   const warnings: string[] = [];
-  for (const [i, doc] of docs.entries()) {
+  let document = 0;
+  for (const doc of composer.compose(parser.parse(input))) {
+    if (++document > maxResources) throw new InputError(`Validate at most ${maxResources} documents at a time.`, 413);
     const fatal = doc.errors.filter(error => error.code !== 'DUPLICATE_KEY');
     if (fatal.length) {
-      warnings.push(`Document ${i + 1}: skipped invalid YAML (${fatal[0].message.split('\n')[0]})`);
+      warnings.push(`Document ${document}: skipped invalid YAML (${fatal[0].message.split('\n')[0]})`);
       continue;
     }
     if (!doc.contents) continue;
@@ -102,19 +111,21 @@ function parse(input: string) {
     try {
       value = doc.toJS({ maxAliasCount: 100 });
     } catch (error) {
-      warnings.push(`Document ${i + 1}: skipped (${error instanceof Error ? error.message : 'could not be read'})`);
+      warnings.push(`Document ${document}: skipped (${error instanceof Error ? error.message : 'could not be read'})`);
       continue;
     }
+    checkValueTree(value, budget);
     const contents = doc.contents as Node;
     const kind = isObject(value) ? text(value.kind) : undefined;
     if (isObject(value) && kind?.endsWith('List') && Array.isArray(value.items) && isMap(contents)) {
+      if (candidates.length + value.items.length > maxResources) throw new InputError(`Validate at most ${maxResources} resources at a time.`, 413);
       const items = contents.get('items', true);
       value.items.forEach((item, index) => {
         const node = isSeq(items) ? items.items[index] as Node : contents;
-        candidates.push({ document: i + 1, node, value: item, lines, parseErrors });
+        candidates.push({ document, node, value: item, lines, parseErrors });
       });
     } else if (value !== null && value !== undefined && value !== '') {
-      candidates.push({ document: i + 1, node: contents, value, lines, parseErrors });
+      candidates.push({ document, node: contents, value, lines, parseErrors });
     }
     if (candidates.length > maxResources) throw new InputError(`Validate at most ${maxResources} resources at a time.`, 413);
   }
@@ -128,14 +139,14 @@ function lineAt(candidate: Candidate, path: Path) {
     if (!next) break;
     node = next;
   }
-  const range = (node as Node).range;
+  const range = (node as Node | null)?.range;
   return range ? candidate.lines.linePos(range[0]).line : undefined;
 }
 
-function collectCrds(candidates: Candidate[]) {
+function collectCrds(candidates: Candidate[], budget: ValidationBudget) {
   const crds = new Map<string, CrdVersion>();
   for (const { value, document } of candidates) {
-    if (!isObject(value) || value.kind !== 'CustomResourceDefinition' || !String(value.apiVersion).startsWith('apiextensions.k8s.io/')) continue;
+    if (!isObject(value) || value.kind !== 'CustomResourceDefinition' || !text(value.apiVersion)?.startsWith('apiextensions.k8s.io/')) continue;
     const spec = isObject(value.spec) ? value.spec : {};
     const group = text(spec.group);
     const kind = isObject(spec.names) ? text(spec.names.kind) : undefined;
@@ -148,13 +159,13 @@ function collectCrds(candidates: Candidate[]) {
       const name = text(version.name);
       if (!name) continue;
       const raw = isObject(version.schema) ? version.schema.openAPIV3Schema : shared;
-      const counter = { rules: 0 };
-      const schema = raw === undefined ? undefined : fromCrdSchema(raw, counter);
+      const counter = { rules: 0, patterns: 0 };
+      const schema = raw === undefined ? undefined : fromCrdSchema(raw, budget, counter);
       if (schema) {
         schema.type = 'object';
         schema.properties = { ...schema.properties, apiVersion: { type: 'string' }, kind: { type: 'string' }, metadata: { $ref: objectMetaRef } };
       }
-      crds.set(`${group}/${name}/${kind}`, { schema, served: version.served !== false, rules: counter.rules, source: `document ${document}` });
+      crds.set(`${group}/${name}/${kind}`, { schema, served: version.served !== false, ...counter, source: `document ${document}` });
     }
   }
   return crds;
@@ -229,10 +240,11 @@ function apiChecks(resource: Record<string, unknown>, kind: string, builtin: boo
 }
 
 export async function validateManifest(input: string, targetMinor: number, schemas: SchemaSet) {
-  const { candidates, warnings } = parse(input);
+  const budget = new ValidationBudget();
+  const { candidates, warnings } = parse(input, budget);
   addKnownEnums(schemas);
-  const validator = new Validator(schemas.definitions);
-  const crds = collectCrds(candidates);
+  const validator = new Validator(schemas.definitions, budget);
+  const crds = collectCrds(candidates, budget);
   const resources: ResourceResult[] = candidates.map(candidate => {
     const { value, document } = candidate;
     const result: ResourceResult = { document, line: lineAt(candidate, []), status: 'skipped', schema: null, errors: [], notes: [] };
@@ -280,6 +292,7 @@ export async function validateManifest(input: string, targetMinor: number, schem
       else if (crd.schema) issues.push(...validator.validate(value, crd.schema));
       else result.notes.push(`The CustomResourceDefinition in ${crd.source} has no schema for ${apiVersion}, so fields are not validated.`);
       if (crd.rules) result.notes.push(`${crd.rules} x-kubernetes-validations rule${crd.rules === 1 ? '' : 's'} (CEL) were not evaluated.`);
+      if (crd.patterns) result.notes.push('Regular-expression patterns from uploaded CustomResourceDefinitions are not evaluated.');
     } else {
       result.notes.push('No schema available. Include the CustomResourceDefinition in the input to validate this custom resource.');
       return result;

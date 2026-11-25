@@ -8,6 +8,7 @@ import { findDeprecation } from '@k8s-workers/k8s-data';
 export const maxInputBytes = 2 * 1024 * 1024;
 const maxChartBytes = 12 * 1024 * 1024;
 const maxEntries = 1000;
+const maxTemplateActions = 10000;
 const maxResources = 10000;
 const maxWarnings = 50;
 const maxListDepth = 32;
@@ -456,15 +457,33 @@ function literalFields(lines: string[], offset: number) {
   return { versions, kinds };
 }
 
-function scanTemplate(input: string, source: string, budget: Budget): Scan {
+function stripTemplateActions(input: string, budget: ChartBudget) {
+  const parts: string[] = [];
+  let cursor = 0;
+  while (true) {
+    const start = input.indexOf('{{', cursor);
+    if (start === -1) break;
+    const close = input.indexOf('}}', start + 2);
+    if (close === -1) break;
+    if (++budget.templateActions > maxTemplateActions) throw new InputError('Chart contains too many template actions.', 413);
+    const end = close + 2;
+    const literal = input.slice(cursor, start);
+    const newline = literal.lastIndexOf('\n');
+    const hasBefore = newline === -1 ? cursor > 0 || Boolean(literal.trim()) : Boolean(literal.slice(newline + 1).trim());
+    let next = end;
+    while (next < input.length && /[^\S\n]/.test(input[next])) next++;
+    const hasAfter = next < input.length && input[next] !== '\n';
+    parts.push(literal, hasBefore || hasAfter ? '?' : '', input.slice(start, end).match(/[\r\n]/g)?.join('') ?? '');
+    cursor = end;
+  }
+  parts.push(input.slice(cursor));
+  return parts.join('');
+}
+
+function scanTemplate(input: string, source: string, budget: ChartBudget): Scan {
   if (!input.includes('{{')) return scanManifest(input, source, budget);
   // Keep line numbers while discarding Go actions, without executing template code.
-  const text = input.replace(/\{\{[\s\S]*?\}\}/g, (action, index: number) => {
-    const before = input.slice(input.lastIndexOf('\n', index - 1) + 1, index);
-    const end = input.indexOf('\n', index + action.length);
-    const after = input.slice(index + action.length, end === -1 ? input.length : end);
-    return (!before.trim() && !after.trim() ? '' : '?') + action.replace(/[^\r\n]/g, '');
-  });
+  const text = stripTemplateActions(input, budget);
   let offset = 1;
   const scan = emptyScan();
   const docs = text.split(/^---[ \t]*(?:#.*)?$/m);
@@ -487,6 +506,7 @@ function scanTemplate(input: string, source: string, budget: Budget): Scan {
 interface ChartBudget extends Budget {
   bytes: number;
   entries: number;
+  templateActions: number;
 }
 
 async function unpackChart(input: ReadableStream<Uint8Array>, budget: ChartBudget) {
@@ -551,7 +571,7 @@ export async function scanChart(file: Blob): Promise<Scan> {
   const scan = emptyScan();
   scan.warnings.push('Chart scan is static: literal declarations in inactive branches may be reported, and generated resources or dynamic fields may be missed. Check helm template output for your values.');
   try {
-    await visitChart(file.stream(), { bytes: 0, entries: 0, parsedBytes: 0, aliasReads: 0 }, scan);
+    await visitChart(file.stream(), { bytes: 0, entries: 0, parsedBytes: 0, aliasReads: 0, templateActions: 0 }, scan);
   } catch (error) {
     if (error instanceof InputError) throw error;
     throw new InputError('Could not read the chart. Upload a valid Helm .tgz archive.');

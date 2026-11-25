@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { validateManifest, type SchemaSet } from './checker';
+import { ValidationBudget } from './limits';
+import { Validator } from './validator';
 
 const schemas = (minor: number): SchemaSet =>
   JSON.parse(readFileSync(new URL(`./public/schemas/1.${minor}.json`, import.meta.url), 'utf8'));
@@ -26,6 +28,13 @@ spec:
 `;
 
 describe('validateManifest', () => {
+  it('shares its work allowance between alternative schemas', () => {
+    const validator = new Validator({}, new ValidationBudget(2));
+    expect(() => validator.validate('secondary', {
+      anyOf: [{ type: 'number' }, { type: 'string' }],
+    })).toThrow('Manifest is too complex to validate.');
+  });
+
   it('accepts a valid deployment', async () => {
     const report = await validate(deployment);
     expect(report).toMatchObject({ targetVersion: '1.30', release: 'v1.30.14', scannedResources: 1, valid: 1, invalid: 0 });
@@ -93,13 +102,20 @@ spec:
               required: [size]
               properties:
                 size: { type: integer, minimum: 1 }
+                colour: { type: string, pattern: "^blue$" }
+                alternative:
+                  type: string
+                  oneOf: [{ enum: [primary] }, { enum: [secondary] }]
+                shade:
+                  type: string
+                  not: { pattern: "^black$" }
                 extra: { type: object, x-kubernetes-preserve-unknown-fields: true }
               x-kubernetes-validations: [{ rule: "self.size < 10" }]
 ---
 apiVersion: example.com/v1
 kind: Widget
 metadata: { name: small }
-spec: { size: 0, colour: red, extra: { anything: true } }
+spec: { size: 0, colour: red, alternative: primary, shade: white, unexpected: red, extra: { anything: true } }
 ---
 apiVersion: other.example.com/v1
 kind: Gadget
@@ -110,9 +126,10 @@ metadata: { name: unknown }
     expect(widget.schema).toBe('custom resource definition');
     expect(widget.errors.map(error => [error.path, error.message])).toEqual([
       ['spec.size', 'must be at least 1'],
-      ['spec.colour', 'unknown field "colour"'],
+      ['spec.unexpected', 'unknown field "unexpected"'],
     ]);
     expect(widget.notes[0]).toContain('1 x-kubernetes-validations rule (CEL) were not evaluated');
+    expect(widget.notes[1]).toContain('Regular-expression patterns from uploaded CustomResourceDefinitions are not evaluated');
     expect(report.resources[2].notes[0]).toContain('Include the CustomResourceDefinition');
   });
 

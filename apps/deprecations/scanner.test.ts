@@ -207,4 +207,13 @@ metadata:
     const oversized = await chart({ 'root/Chart.yaml': '0'.repeat(12 * 1024 * 1024) });
     await expect(scanChart(new Blob([Uint8Array.from(oversized)]))).rejects.toMatchObject({ status: 413 });
   });
+
+  it('preserves line numbers across multiline Helm actions', async () => {
+    const archive = await chart({
+      'root/Chart.yaml': 'name: root',
+      'root/templates/job.yaml': '{{- if\n .Values.legacy }}\napiVersion: batch/v1beta1\nkind: CronJob\n{{- end }}\n',
+    });
+    const scan = await scanChart(new Blob([Uint8Array.from(archive)]));
+    expect(scan.resources).toMatchObject([{ kind: 'CronJob', line: 3 }]);
+  });
 });

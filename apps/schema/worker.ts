@@ -1,6 +1,7 @@
 import { latestMinor, minimumMinor } from '@k8s-workers/k8s-data';
 import { appendCartoonTheme, appendSiteFooter, cartoonStylesheet } from '@k8s-workers/ui';
-import { InputError, maxInputBytes, validateManifest, type SchemaSet } from './checker';
+import { maxInputBytes, validateManifest, type SchemaSet } from './checker';
+import { InputError } from './limits';
 
 interface Env {
   ASSETS: Pick<Fetcher, 'fetch'>;
@@ -9,7 +10,7 @@ interface Env {
 
 const maxRequestBytes = maxInputBytes + 64 * 1024;
 const rawContentTypes = new Set(['application/yaml', 'application/x-yaml', 'text/yaml', 'text/plain']);
-const schemaCache = new Map<number, Promise<SchemaSet>>();
+const schemaCache = new Map<number, SchemaSet>();
 const json = (data: unknown, status = 200, headers?: HeadersInit) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
 
@@ -60,16 +61,13 @@ async function readInput(request: Request, url: URL) {
   return { version, manifest };
 }
 
-function loadSchemas(env: Env, origin: string, minor: number) {
-  let schemas = schemaCache.get(minor);
-  if (!schemas) {
-    schemas = env.ASSETS.fetch(new Request(`${origin}/schemas/1.${minor}.json`)).then(response => {
-      if (!response.ok) throw new Error(`Schema for 1.${minor} is unavailable.`);
-      return response.json<SchemaSet>();
-    });
-    schemas.catch(() => schemaCache.delete(minor));
-    schemaCache.set(minor, schemas);
-  }
+async function loadSchemas(env: Env, origin: string, minor: number) {
+  const cached = schemaCache.get(minor);
+  if (cached) return cached;
+  const response = await env.ASSETS.fetch(new Request(`${origin}/schemas/1.${minor}.json`));
+  if (!response.ok) throw new Error(`Schema for 1.${minor} is unavailable.`);
+  const schemas = await response.json<SchemaSet>();
+  schemaCache.set(minor, schemas);
   return schemas;
 }
 

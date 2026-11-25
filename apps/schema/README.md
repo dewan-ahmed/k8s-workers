@@ -2,13 +2,13 @@
 
 Validates manifests (including rendered Helm output, multi-document YAML, JSON, and `List` objects) against the OpenAPI schema of a Kubernetes release from 1.16 through 1.37. Live at https://schema.k8s.workers.dev.
 
-It reports unknown fields, wrong types, missing required fields, invalid quantities, a few common enum values that the published specs omit, invalid object names and label keys, workload selectors that do not match their pod template, and API versions the selected release does not serve. Custom resources are validated against CustomResourceDefinitions included in the same input; `x-kubernetes-validations` (CEL) rules, admission webhooks, and cluster state are not checked.
+It reports unknown fields, wrong types, missing required fields, invalid quantities, a few common enum values that the published specs omit, invalid object names and label keys, workload selectors that do not match their pod template, and API versions the selected release does not serve. Custom resources are validated against CustomResourceDefinitions included in the same input; uploaded regular-expression patterns, `x-kubernetes-validations` (CEL) rules, admission webhooks, and cluster state are not checked.
 
 Run `npm run dev --workspace @k8s-workers/schema` from the repository root. Deploy with `npm run deploy --workspace @k8s-workers/schema`.
 
 ## API
 
-`POST /api/validate` accepts JSON (`{"version": "1.30", "manifest": "..."}`) or a raw manifest with `?version=1.30` and `Content-Type: application/yaml`, `application/x-yaml`, `text/yaml`, or `text/plain`. Input is limited to 2 MiB and 500 resources. `GET /api/config` returns the supported version range.
+`POST /api/validate` accepts JSON (`{"version": "1.30", "manifest": "..."}`) or a raw manifest with `?version=1.30` and `Content-Type: application/yaml`, `application/x-yaml`, `text/yaml`, or `text/plain`. Input is limited to 2 MiB, 500 documents, and 500 resources. If validation exceeds the work limit, the API returns HTTP 413 rather than a partial result. Split the manifest into smaller batches or simplify deeply nested values and schemas. `GET /api/config` returns the supported version range.
 
 ## Schemas
 

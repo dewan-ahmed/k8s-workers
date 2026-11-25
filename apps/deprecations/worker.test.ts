@@ -7,7 +7,8 @@ const send = vi.fn(async () => ({ messageId: 'simulated' }));
 const binding = (success = true) => ({ limit: vi.fn(async () => ({ success })) });
 const env = () => ({
   ASSETS: { fetch: vi.fn() },
-  EMAIL: { send }, EMAIL_FROM: 'reports@example.com', SCAN_LIMIT: binding(), EMAIL_LIMIT: binding(),
+  EMAIL: { send }, EMAIL_FROM: 'reports@example.com', EMAIL_ALLOWED_RECIPIENTS: 'dev@example.com',
+  SCAN_LIMIT: binding(), EMAIL_LIMIT: binding(),
 });
 const request = (path: string, data: object, headers: Record<string, string> = {}) => new Request(url + path, {
   method: 'POST',
@@ -106,9 +107,22 @@ describe('checker API', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects cross-origin browser requests and disables email without a sender', async () => {
+  it('rejects cross-origin browser requests and requires a sender and an explicit recipient allowlist', async () => {
     const input = { manifest, targetVersion: '1.25', to: 'dev@example.com' };
     expect((await worker.fetch(request('/api/email', input, { Origin: 'https://elsewhere.test' }), env())).status).toBe(403);
     expect((await worker.fetch(request('/api/email', input), { ...env(), EMAIL_FROM: undefined })).status).toBe(503);
+    const disabled = { ...env(), EMAIL_ALLOWED_RECIPIENTS: undefined };
+    expect((await worker.fetch(request('/api/email', input), disabled)).status).toBe(503);
+    const config = new Request(url + '/api/config');
+    expect(await (await worker.fetch(config, disabled)).json()).toMatchObject({ emailEnabled: false });
+    expect(await (await worker.fetch(config, env())).json()).toMatchObject({ emailEnabled: true });
+  });
+
+  it('does not send a report to an unapproved recipient', async () => {
+    const send = vi.fn();
+    const input = { manifest, targetVersion: '1.25', to: 'other@example.com' };
+    const response = await worker.fetch(request('/api/email', input), { ...env(), EMAIL: { send } });
+    expect(response.status).toBe(422);
+    expect(send).not.toHaveBeenCalled();
   });
 });

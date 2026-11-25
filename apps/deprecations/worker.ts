@@ -7,6 +7,7 @@ interface Env {
   ASSETS: Pick<Fetcher, 'fetch'>;
   EMAIL: EmailBinding;
   EMAIL_FROM?: string;
+  EMAIL_ALLOWED_RECIPIENTS?: string;
   SCAN_LIMIT: RateLimit;
   EMAIL_LIMIT: RateLimit;
 }
@@ -132,11 +133,19 @@ export default {
       const asset = await env.ASSETS.fetch(request);
       return request.method === 'GET' && asset.ok ? appendCartoonTheme(appendSiteFooter(asset), 'deprecations') : asset;
     }
-    const sender = parseEmail(env.EMAIL_FROM);
-    if (url.pathname === '/api/config' && request.method === 'GET') {
-      return json({ minimumMinor, latestMinor, emailEnabled: Boolean(sender) });
-    }
     const email = url.pathname === '/api/email';
+    let sender: string | null = null;
+    const recipients = new Map<string, string>();
+    if (email || url.pathname === '/api/config') {
+      sender = parseEmail(env.EMAIL_FROM);
+      for (const entry of env.EMAIL_ALLOWED_RECIPIENTS?.split(',') ?? []) {
+        const address = parseEmail(entry);
+        if (address) recipients.set(address.toLowerCase(), address);
+      }
+    }
+    if (url.pathname === '/api/config' && request.method === 'GET') {
+      return json({ minimumMinor, latestMinor, emailEnabled: Boolean(sender && recipients.size) });
+    }
     if (!email && url.pathname !== '/api/check' && url.pathname !== '/api/config') {
       return json({ error: 'Not found.' }, 404);
     }
@@ -145,15 +154,17 @@ export default {
     }
     const origin = request.headers.get('Origin');
     if (origin && origin !== url.origin) return json({ error: 'Cross-origin requests are not allowed.' }, 403);
-    if (email && !sender) return json({ error: 'Email sending is not configured.' }, 503);
+    if (email && (!sender || !recipients.size)) return json({ error: 'Email sending is not configured.' }, 503);
 
     try {
       const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
       const limit = email ? env.EMAIL_LIMIT : env.SCAN_LIMIT;
       if (!(await limit.limit({ key: `ip:${ip}` })).success) return tooMany();
       const input = await readInput(request, url);
-      const recipient = email ? parseEmail(input.to) : null;
-      if (email && !recipient) return json({ error: 'Enter one valid recipient email address.' }, 400);
+      const to = email ? parseEmail(input.to) : null;
+      if (email && !to) return json({ error: 'Enter one valid recipient email address.' }, 400);
+      const recipient = to ? recipients.get(to.toLowerCase()) : undefined;
+      if (email && !recipient) return json({ error: 'This recipient is not allowed.' }, 422);
 
       const report = await reportFor(input);
       if (!email) return json(report);

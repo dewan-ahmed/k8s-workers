@@ -67,7 +67,7 @@
       <p>Fail CI on invalid or unvalidated resources and YAML warnings:</p>
       <pre><code>jq -e '.scannedResources &gt; 0 and .invalid == 0 and .skipped == 0 and (.warnings | length == 0)' report.json</code></pre>
     </section>
-    <footer>Schemas from the Kubernetes OpenAPI spec of each release's latest patch. This checks structure and common API naming rules, not admission webhooks, CEL rules, or cluster state.</footer>
+    <footer>Schemas from the Kubernetes OpenAPI spec of each release's latest patch. This checks structure and common API naming rules, not admission webhooks, uploaded CRD patterns, CEL rules, or cluster state.</footer>
   </main>
 </body>
 </html>

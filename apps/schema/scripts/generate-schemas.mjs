@@ -30,7 +30,11 @@ function compact(schema) {
 }
 
 async function getJson(url) {
-  const response = await fetch(url, { headers: process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {} });
+  const token = new URL(url).origin === 'https://api.github.com' ? process.env.GITHUB_TOKEN : undefined;
+  const response = await fetch(url, {
+    redirect: 'error',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
   return response.json();
 }
@@ -42,7 +46,8 @@ async function definitionsFor(minor, tag) {
   const files = await getJson(`https://api.github.com/repos/kubernetes/kubernetes/contents/api/openapi-spec/v3?ref=${tag}`);
   const definitions = {};
   for (const file of files.filter(file => file.name.endsWith('_openapi.json'))) {
-    Object.assign(definitions, (await getJson(file.download_url)).components.schemas);
+    const path = `https://raw.githubusercontent.com/kubernetes/kubernetes/${tag}/api/openapi-spec/v3/${encodeURIComponent(file.name)}`;
+    Object.assign(definitions, (await getJson(path)).components.schemas);
   }
   return definitions;
 }
