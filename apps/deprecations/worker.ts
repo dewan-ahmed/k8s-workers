@@ -1,6 +1,6 @@
 import { parseEmail, sendTextEmail, type EmailBinding } from '@k8s-workers/email';
 import { latestMinor, migrationGuide, minimumMinor } from '@k8s-workers/k8s-data';
-import { appendSiteFooter } from '@k8s-workers/ui';
+import { appendCartoonTheme, appendSiteFooter, cartoonStylesheet } from '@k8s-workers/ui';
 import { InputError, makeReport, maxInputBytes, scanChart, scanManifest, type Report } from './scanner';
 
 interface Env {
@@ -123,9 +123,10 @@ function reportEmail(report: Report) {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === '/cartoon.css') return cartoonStylesheet();
     if (url.pathname === '/' || url.pathname === '/index.html') {
       const asset = await env.ASSETS.fetch(request);
-      return request.method === 'GET' && asset.ok ? appendSiteFooter(asset) : asset;
+      return request.method === 'GET' && asset.ok ? appendCartoonTheme(appendSiteFooter(asset), 'deprecations') : asset;
     }
     const sender = parseEmail(env.EMAIL_FROM);
     if (url.pathname === '/api/config' && request.method === 'GET') {

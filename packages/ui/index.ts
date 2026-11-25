@@ -1,3 +1,5 @@
+export { appendCartoonTheme, cartoonStylesheet } from './cartoon';
+
 export const siteFooter = `<nav aria-label="Kubernetes tools">Tools:
   <a href="https://deprecations.k8s.workers.dev">API deprecations</a> ·
   <a href="https://compat.k8s.workers.dev">Cluster compatibility</a> ·
