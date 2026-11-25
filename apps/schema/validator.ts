@@ -57,23 +57,21 @@ const intOrStringRef = 'io.k8s.apimachinery.pkg.util.intstr.IntOrString';
 const quantity = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[KMGTPE]i|[numkMGTPE]|[eE][+-]?\d+)?$/;
 const dateTime = /^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$/;
 const crdDate = /^(\d{4})-(\d{2})-(\d{2})$/;
-const crdTime = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:[^\n]\d+)?(?:z|[+-]\d{2}:\d{2})$/u;
+const crdTime = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:[^\n]\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$/u;
 const base64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const maxIssues = 100;
 
 function isCrdDateTime(value: string) {
   // Match kube-openapi strfmt.IsDateTime, including its permissive fraction separator and offset.
-  const lower = value.toLowerCase();
-  const separator = lower.indexOf('t');
-  if (separator < 0) return false;
-  const date = crdDate.exec(lower.slice(0, separator));
+  const [datePart, timePart] = value.split(/[Tt]/, 2);
+  if (timePart === undefined) return false;
+  const date = crdDate.exec(datePart);
   if (!date) return false;
   const [year, month, day] = date.slice(1).map(Number);
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   if (day < 1 || day > (days[month - 1] ?? 0)) return false;
-  const nextSeparator = lower.indexOf('t', separator + 1);
-  return crdTime.test(lower.slice(separator + 1, nextSeparator === -1 ? undefined : nextSeparator));
+  return crdTime.test(timePart);
 }
 
 function typeOf(value: unknown) {
