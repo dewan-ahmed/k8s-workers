@@ -79,6 +79,9 @@ summary { color: #684b16; font-size: .84rem; font-weight: 700; }
 footer { color: var(--muted); font-size: .78rem; padding-bottom: 2rem; margin-top: 1.75rem; }
 .site-credit { margin-top: 1.25rem; padding-top: 1rem; border-top: 1.5px solid #b5bcaa; font-size: .8rem; }
 .site-credit a { color: var(--text); font-weight: 800; }
+.site-contribute { margin-top: .75rem; }
+.site-contribute a { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; }
+.site-contribute svg { flex-shrink: 0; }
 .site-disclaimer { margin-top: .65rem; font-size: .73rem; line-height: 1.65; }
 .sibling-tools { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
 @media (prefers-reduced-motion: reduce) { .primary, .secondary { transition: none; } }
