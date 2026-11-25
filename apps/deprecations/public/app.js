@@ -49,7 +49,9 @@ checker.addEventListener('input', syncInputs);
 
 async function api(path, options) {
   const response = await fetch(path, options);
-  const data = await response.json();
+  const data = await response.json().catch(() => ({
+    error: `The checker could not process this request (HTTP ${response.status}). Try a smaller input.`,
+  }));
   if (!response.ok) throw new Error(data.error ?? 'The request could not be completed.');
   return data;
 }
@@ -61,6 +63,10 @@ function requestPayload(input, to) {
     body.set('targetVersion', input.targetVersion);
     if (to) body.set('to', to);
     return { method: 'POST', body };
+  }
+  if (!to) {
+    // Raw YAML avoids JSON escaping, which can push a manifest under 2 MiB past the request limit.
+    return { method: 'POST', headers: { 'Content-Type': 'text/yaml' }, body: input.manifest };
   }
   return {
     method: 'POST',
@@ -131,7 +137,8 @@ async function runCheck(input, isExample = false) {
   snapshot = undefined;
   notice('check-status', 'Scanning…');
   try {
-    const data = await api('/api/check', requestPayload(input));
+    const path = 'chart' in input ? '/api/check' : `/api/check?targetVersion=${encodeURIComponent(input.targetVersion)}`;
+    const data = await api(path, requestPayload(input));
     if (current !== revision) return;
     snapshot = input;
     notice('check-status', '');
