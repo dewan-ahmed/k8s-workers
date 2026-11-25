@@ -1,5 +1,5 @@
 import { latestMinor, minimumMinor } from '@k8s-workers/k8s-data';
-import { appendSiteFooter } from '@k8s-workers/ui';
+import { appendCartoonTheme, appendSiteFooter, cartoonStylesheet } from '@k8s-workers/ui';
 import { InputError, maxInputBytes, validateManifest, type SchemaSet } from './checker';
 
 interface Env {
@@ -76,9 +76,10 @@ function loadSchemas(env: Env, origin: string, minor: number) {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === '/cartoon.css') return cartoonStylesheet();
     if (url.pathname === '/' || url.pathname === '/index.html') {
       const asset = await env.ASSETS.fetch(request);
-      return request.method === 'GET' && asset.ok ? appendSiteFooter(asset) : asset;
+      return request.method === 'GET' && asset.ok ? appendCartoonTheme(appendSiteFooter(asset), 'schema') : asset;
     }
     if (url.pathname === '/api/config') {
       if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405, { Allow: 'GET' });
