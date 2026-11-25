@@ -70,6 +70,12 @@ Open http://localhost:8787, or replace the public URL in the examples above with
 2. Add GitHub Actions secrets `CLOUDFLARE_API_TOKEN` (account-scoped Workers Scripts Edit) and `CLOUDFLARE_ACCOUNT_ID`. Run **Deploy deprecations** from `main`, or deploy locally with `npm run deploy` with Wrangler authenticated to the same account.
 3. To enable email, [onboard a sender domain](https://developers.cloudflare.com/email-service/get-started/send-emails/) you control in Cloudflare Email Service. Your `workers.dev` hostname is not a sender domain. Set the GitHub Actions variable `EMAIL_FROM` to a mailbox on the onboarded domain before running the workflow, or pass `npm run deploy -- --var EMAIL_FROM:reports@your-domain.example` locally. On Workers Free, [add and verify](https://developers.cloudflare.com/email-service/configuration/destination-addresses/) each recipient in Cloudflare first. [Sending to unverified addresses requires Workers Paid](https://developers.cloudflare.com/email-service/platform/pricing/).
 
+## Disclaimer
+
+Not affiliated with or endorsed by the Kubernetes project, the CNCF or The Linux Foundation. Kubernetes is a registered trademark of The Linux Foundation.
+
+Results are provided as is, without warranty. Verify findings against official Kubernetes documentation before making changes.
+
 ## Repository
 
 | Workspace | Purpose |
