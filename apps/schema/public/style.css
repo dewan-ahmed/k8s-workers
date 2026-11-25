@@ -8,8 +8,6 @@
   --muted: #abbab8;
   --accent: #b8f5a4;
   --removed: #ffaea8;
-  --invalid: #ffaea8;
-  --valid: #b8f5a4;
   --deprecated: #ffd88d;
   font-family: system-ui, sans-serif;
   line-height: 1.55;
@@ -64,8 +62,8 @@ textarea { display: block; width: 100%; margin-top: .35rem; resize: vertical; mi
 .metrics strong, .metrics span { display: block; }
 .metrics strong { font-size: 1.5rem; }
 .metrics span { color: var(--muted); font-size: .85rem; }
-#invalid-count, .invalid { color: var(--invalid); }
-#valid-count, .valid { color: var(--valid); }
+#invalid-count, .invalid { color: var(--removed); }
+#valid-count, .valid { color: var(--accent); }
 #skipped-count, .skipped { color: var(--deprecated); }
 .target-tag, .badge { display: inline-block; border: 1px solid var(--border); border-radius: .35rem; padding: .2rem .5rem; font: .75rem ui-monospace, monospace; }
 details { margin-block: .75rem; border: 1px solid var(--border); border-radius: .5rem; padding: .6rem; }
