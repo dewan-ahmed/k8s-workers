@@ -294,6 +294,94 @@ metadata: { name: unknown }
     ]);
   });
 
+  it.each([
+    { minor: 19, preserveUnknownFields: false, status: 'invalid' },
+    { minor: 20, preserveUnknownFields: false, status: 'valid' },
+    { minor: 21, preserveUnknownFields: false, status: 'valid' },
+    { minor: 21, preserveUnknownFields: true, status: 'invalid' },
+    { minor: 21, preserveUnknownFields: undefined, status: 'invalid' },
+  ])('handles beta CRD nulls on 1.$minor with preserveUnknownFields=$preserveUnknownFields', async ({
+    minor, preserveUnknownFields, status,
+  }) => {
+    const crd = {
+      apiVersion: 'apiextensions.k8s.io/v1beta1', kind: 'CustomResourceDefinition', metadata: { name: 'widgets.example.com' },
+      spec: {
+        group: 'example.com', scope: 'Namespaced', version: 'v1', preserveUnknownFields,
+        names: { plural: 'widgets', singular: 'widget', kind: 'Widget' },
+        validation: { openAPIV3Schema: { type: 'object', properties: {
+          spec: { type: 'object', required: ['mode'], properties: {
+            description: { type: 'string' },
+            mode: { type: 'string', nullable: true, enum: ['safe'] },
+          } },
+        } } },
+      },
+    };
+    const widget = (name: string, mode: string | null) => ({
+      apiVersion: 'example.com/v1', kind: 'Widget', metadata: { name }, spec: { description: null, mode },
+    });
+    const report = await validate([crd, widget('optional-null', 'safe'), widget('nullable-enum', null)]
+      .map(doc => JSON.stringify(doc)).join('\n---\n'), minor);
+    expect(report.resources.map(resource => resource.status)).toEqual(['valid', status, 'invalid']);
+    expect(report.resources[1].errors.map(error => error.path)).toEqual(status === 'valid' ? [] : ['spec.description']);
+    expect(report.resources[2].errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'spec.mode', message: 'must be one of "safe"; got null' }),
+    ]));
+  });
+
+  it('requires embedded resource identity after pruning optional beta CRD fields', async () => {
+    const crd = {
+      apiVersion: 'apiextensions.k8s.io/v1beta1', kind: 'CustomResourceDefinition', metadata: { name: 'widgets.example.com' },
+      spec: {
+        group: 'example.com', scope: 'Namespaced', version: 'v1', preserveUnknownFields: false,
+        names: { plural: 'widgets', singular: 'widget', kind: 'Widget' },
+        validation: { openAPIV3Schema: { type: 'object', properties: { template: {
+          type: 'object', 'x-kubernetes-embedded-resource': true, 'x-kubernetes-preserve-unknown-fields': true,
+          properties: { apiVersion: { type: 'string' }, kind: { type: 'string' } },
+        } } } },
+      },
+    };
+    const widget = (name: string, template: Record<string, unknown>) => ({
+      apiVersion: 'example.com/v1', kind: 'Widget', metadata: { name }, template,
+    });
+    const report = await validate([
+      crd,
+      widget('valid-template', { apiVersion: 'v1', kind: 'ConfigMap' }),
+      widget('null-version', { apiVersion: null, kind: 'ConfigMap' }),
+      widget('null-kind', { apiVersion: 'v1', kind: null }),
+      widget('missing-identity', {}),
+      widget('invalid-identity', { apiVersion: '', kind: 2 }),
+    ].map(doc => JSON.stringify(doc)).join('\n---\n'), 21);
+    expect(report.resources.map(resource => resource.status)).toEqual(['valid', 'valid', 'invalid', 'invalid', 'invalid', 'invalid']);
+    expect(report.resources.slice(2).map(resource => resource.errors.map(error => error.path))).toEqual([
+      ['template.apiVersion'], ['template.kind'], ['template.apiVersion', 'template.kind'], ['template.apiVersion', 'template.kind'],
+    ]);
+  });
+
+  it.each([19, 20])('applies v1 defaults and prunes explicit nulls at the Kubernetes 1.20 boundary on 1.%i', async minor => {
+    const settings = {
+      type: 'object', required: ['mode'], properties: {
+        mode: { type: 'string', default: 'safe' },
+        description: { type: 'string' },
+      },
+    };
+    const crd = {
+      apiVersion: 'apiextensions.k8s.io/v1', kind: 'CustomResourceDefinition', metadata: { name: 'widgets.example.com' },
+      spec: {
+        group: 'example.com', scope: 'Namespaced', names: { plural: 'widgets', singular: 'widget', kind: 'Widget' },
+        versions: [{ name: 'v1', served: true, storage: true, schema: { openAPIV3Schema: {
+          type: 'object', properties: { settings },
+        } } }],
+      },
+    };
+    const widget = (name: string, settings: Record<string, unknown>) => ({
+      apiVersion: 'example.com/v1', kind: 'Widget', metadata: { name }, settings,
+    });
+    const report = await validate([crd, widget('omitted', {}), widget('explicit-null', { mode: null, description: null })]
+      .map(doc => JSON.stringify(doc)).join('\n---\n'), minor);
+    expect(report.resources.map(resource => resource.status)).toEqual(['valid', 'valid', minor === 19 ? 'invalid' : 'valid']);
+    expect(report.resources[2].errors.map(error => error.path)).toEqual(minor === 19 ? ['settings.mode', 'settings.description'] : []);
+  });
+
   it('expands List objects, accepts JSON, and keeps going past invalid YAML documents', async () => {
     const list = JSON.stringify({ apiVersion: 'v1', kind: 'List', items: [
       { apiVersion: 'v1', kind: 'ConfigMap', metadata: { name: 'a' }, data: { on: 'yes' } },
