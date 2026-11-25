@@ -75,6 +75,8 @@ details ul { margin: .5rem 0 0; padding-left: 1.25rem; }
 .email-form { border-top: 1px solid var(--border); padding-top: 1rem; margin-top: .5rem; }
 .email-fields { margin-top: .75rem; flex-wrap: wrap; }
 .email-fields input { flex: 1 1 12rem; min-width: 0; }
+.ci-docs p { margin-top: .75rem; }
+.ci-docs pre { overflow-x: auto; background: var(--input); border: 1px solid var(--border); border-radius: .5rem; padding: .75rem; }
 footer { padding-bottom: 2rem; }
 @media (max-width: 34rem) {
   .panel-heading { align-items: flex-start; flex-direction: column; }

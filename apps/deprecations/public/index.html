@@ -69,6 +69,21 @@
         <p id="email-status" class="status" role="status"></p>
       </form>
     </section>
+    <section id="ci" class="panel ci-docs" aria-labelledby="ci-title">
+      <h2 id="ci-title">Use from CI / terminal</h2>
+      <p>Send a manifest or rendered Helm output directly to <code>POST /api/check</code>:</p>
+      <pre><code>curl -fsS 'https://deprecations.k8s.workers.dev/api/check?targetVersion=1.25' \
+  -H 'Content-Type: application/yaml' --data-binary @manifest.yaml -o report.json</code></pre>
+      <p>Raw uploads require the <code>targetVersion</code> query parameter and also accept <code>application/x-yaml</code>, <code>text/yaml</code>, and <code>text/plain</code>. For JSON, include the target and manifest in the body:</p>
+      <pre><code>curl -fsS https://deprecations.k8s.workers.dev/api/check \
+  -H 'Content-Type: application/json' \
+  --data-binary '{"targetVersion":"1.25","manifest":"apiVersion: batch/v1beta1\nkind: CronJob"}'</code></pre>
+      <p>The JSON report includes <code>targetVersion</code>, <code>mode</code>, <code>scannedResources</code>, <code>removed</code>, <code>deprecated</code>, <code>findings</code>, and <code>warnings</code>.</p>
+      <p>HTTP <code>200</code> means a report was produced, even with removals or skipped YAML. Errors return JSON with an <code>error</code> message: <code>400</code> invalid input, <code>403</code> cross-origin POST, <code>405</code> wrong method, <code>413</code> size or resource limit, <code>415</code> unsupported content type, <code>429</code> rate limit, or <code>500</code> unexpected scan failure. See <a href="/api/config"><code>GET /api/config</code></a> for supported targets.</p>
+      <p>Stop if curl fails. After a successful manifest scan saved to <code>report.json</code>, fail CI on removals, warnings, or zero scanned resources:</p>
+      <pre><code>jq -e '.scannedResources &gt; 0 and .removed == 0 and (.warnings | length == 0)' report.json</code></pre>
+      <p>Chart archives always include a static-scan warning. Use this strict gate on rendered manifests, not archive reports.</p>
+    </section>
     <footer>API lifecycle data from the <a href="https://kubernetes.io/docs/reference/using-api/deprecation-guide/">Kubernetes project</a>. This is not a cluster compatibility or schema validator.</footer>
   </main>
 </body>

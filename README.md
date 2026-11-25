@@ -12,7 +12,44 @@ The [checker](https://deprecations.k8s.workers.dev) flags cataloged Kubernetes A
 
 Each manifest or compressed chart may be up to 2 MiB (the JSON/multipart envelope has a separate 2 MiB + 64 KiB limit). Expanded charts are limited to 12 MiB, including packaged dependencies. Scans are not persisted by the app, but input is sent to the Worker for processing; do not send secrets. A clean report is not a full cluster compatibility check: the catalog does not cover vendor APIs, custom CRDs, feature gates, or field-level validation.
 
-## Develop and use the API
+## Use from CI / terminal
+
+`POST /api/check` returns a JSON report. Send a Kubernetes manifest or rendered Helm output directly from a file:
+
+```sh
+curl -fsS 'https://deprecations.k8s.workers.dev/api/check?targetVersion=1.25' \
+  -H 'Content-Type: application/yaml' --data-binary @manifest.yaml -o report.json
+```
+
+Raw bodies also accept `application/x-yaml`, `text/yaml`, and `text/plain`; `targetVersion` is required in the query. For JSON, put both `targetVersion` and the manifest string in the body:
+
+```sh
+curl -fsS https://deprecations.k8s.workers.dev/api/check \
+  -H 'Content-Type: application/json' \
+  --data-binary '{"targetVersion":"1.25","manifest":"apiVersion: batch/v1beta1\nkind: CronJob"}'
+```
+
+For a static Helm archive scan, use multipart form fields:
+
+```sh
+curl -fsS https://deprecations.k8s.workers.dev/api/check \
+  -F targetVersion=1.37 \
+  -F chart=@my-chart.tgz
+```
+
+The report includes `targetVersion`, `mode` (`manifest` or `chart`), `scannedResources`, `removed` and `deprecated` counts, `findings` with lifecycle and replacement details, and `warnings` for issues such as skipped YAML documents.
+
+HTTP `200` means the scan returned a report, not that the input passed. Errors return JSON with an `error` message: `400` for invalid input (including a missing or unsupported target), `403` for a cross-origin POST, `405` for a wrong method, `413` for oversized input or too many resources, `415` for an unsupported content type, `429` for rate limiting, and `500` for an unexpected scan failure. `GET /api/config` exposes the supported target range.
+
+In CI, stop if curl fails. After a successful manifest scan saved to `report.json`, use `jq -e` to fail on removals, skipped input, or zero scanned resources:
+
+```sh
+jq -e '.scannedResources > 0 and .removed == 0 and (.warnings | length == 0)' report.json
+```
+
+The gate allows deprecations that have not been removed; add `and .deprecated == 0` if you want to reject them too. Chart archives always return a static-scan warning: apply this strict gate to rendered manifests, not archive reports.
+
+## Develop
 
 Requires Node.js 22 or newer; CI uses Node.js 24.
 
@@ -23,17 +60,7 @@ npm test
 npm run dev
 ```
 
-Open http://localhost:8787, or call the Worker:
-
-```sh
-curl http://localhost:8787/api/check \
-  -H 'Content-Type: application/json' \
-  -d '{"targetVersion":"1.25","manifest":"apiVersion: batch/v1beta1\nkind: CronJob"}'
-
-curl http://localhost:8787/api/check \
-  -F targetVersion=1.37 \
-  -F chart=@my-chart.tgz
-```
+Open http://localhost:8787, or replace the public URL in the examples above with that local origin.
 
 `POST /api/email` accepts the same JSON or multipart input with an additional `to` field. The Worker recomputes the report and rate limits requests by IP and recipient per Cloudflare location. For local simulation, run `npm run dev -- --var EMAIL_FROM:reports@example.com`. Wrangler simulates the email binding; no real messages are sent.
 

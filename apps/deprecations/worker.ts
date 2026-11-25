@@ -17,6 +17,7 @@ interface CheckInput {
 }
 
 const maxRequestBytes = maxInputBytes + 64 * 1024;
+const manifestContentTypes = new Set(['application/yaml', 'application/x-yaml', 'text/yaml', 'text/plain']);
 const json = (data: unknown, status = 200, headers?: HeadersInit) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
 const tooMany = () => json({ error: 'Too many requests. Try again in a minute.' }, 429, { 'Retry-After': '60' });
@@ -44,12 +45,21 @@ async function boundedBody(request: Request) {
   })), { headers: { 'Content-Type': request.headers.get('Content-Type') ?? '' } });
 }
 
-async function readInput(request: Request): Promise<CheckInput> {
+async function readInput(request: Request, url: URL): Promise<CheckInput> {
   const contentType = request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
-  if (contentType !== 'application/json' && contentType !== 'multipart/form-data') {
-    throw new InputError('Use application/json for manifests or multipart/form-data for charts.', 415);
+  const check = url.pathname === '/api/check';
+  const raw = check && contentType !== undefined && manifestContentTypes.has(contentType);
+  if (!raw && contentType !== 'application/json' && contentType !== 'multipart/form-data') {
+    throw new InputError(check
+      ? 'Use application/yaml, application/x-yaml, text/yaml, text/plain, or application/json for manifests, or multipart/form-data for charts.'
+      : 'Use application/json for manifests or multipart/form-data for charts.', 415);
   }
   try {
+    if (raw) {
+      const targetVersion = url.searchParams.get('targetVersion');
+      if (!targetVersion) throw new InputError('Add the targetVersion query parameter for raw manifests (for example, ?targetVersion=1.25).');
+      return { targetVersion, manifest: await (await boundedBody(request)).text() };
+    }
     const body = await boundedBody(request);
     if (contentType === 'application/json') {
       const input: unknown = await body.json();
@@ -125,7 +135,7 @@ export default {
       const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
       const limit = email ? env.EMAIL_LIMIT : env.SCAN_LIMIT;
       if (!(await limit.limit({ key: `ip:${ip}` })).success) return tooMany();
-      const input = await readInput(request);
+      const input = await readInput(request, url);
       const recipient = email ? parseEmail(input.to) : null;
       if (email && !recipient) return json({ error: 'Enter one valid recipient email address.' }, 400);
 
