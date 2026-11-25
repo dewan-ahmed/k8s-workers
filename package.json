@@ -1,0 +1,20 @@
+{
+  "name": "k8s-workers",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "npm run dev --workspace @k8s-workers/deprecations --",
+    "deploy": "npm run deploy --workspace @k8s-workers/deprecations --",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261125.1",
+    "@types/node": "^22.0.0",
+    "@types/tar-stream": "^3.1.4",
+    "typescript": "~5.9.3",
+    "vitest": "~3.2.6"
+  }
+}
