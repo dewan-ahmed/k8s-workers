@@ -1,6 +1,7 @@
 {
   "name": "k8s-workers",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": ["apps/*", "packages/*"],
   "engines": { "node": ">=22" },

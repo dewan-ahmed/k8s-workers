@@ -81,3 +81,7 @@ Open http://localhost:8787, or replace the public URL in the examples above with
 Every tool includes the attribution footer from [`@k8s-workers/ui`](packages/ui); Workers serving static HTML can use `appendSiteFooter` to insert it into their page's `<footer>`.
 
 Catalog entries link to the Kubernetes [Deprecated API Migration Guide](https://kubernetes.io/docs/reference/using-api/deprecation-guide/), [upstream lifecycle annotations](https://github.com/kubernetes/api/tree/v0.37.2), or the official announcement where appropriate.
+
+## License
+
+Licensed under the [MIT License](LICENSE).
