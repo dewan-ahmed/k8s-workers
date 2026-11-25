@@ -80,7 +80,7 @@ function render(data, isExample) {
   byId('next-step').textContent = data.invalid
     ? 'Fix the errors below, then validate again.'
     : data.skipped
-      ? 'Some resources were not validated. Include their CustomResourceDefinitions to check them too.'
+      ? 'Some resources could not be fully validated. See their notes below.'
       : data.scannedResources
         ? 'All resources match the schema. Server-side checks such as admission webhooks can still reject them.'
         : 'Check your input for Kubernetes resources, then validate again.';
