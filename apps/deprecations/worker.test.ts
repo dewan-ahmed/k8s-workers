@@ -13,6 +13,11 @@ const request = (path: string, data: object, headers: Record<string, string> = {
   headers: { 'Content-Type': 'application/json', ...headers },
   body: JSON.stringify(data),
 });
+const rawRequest = (path: string, body = manifest, contentType = 'application/yaml') => new Request(url + path, {
+  method: 'POST',
+  headers: { 'Content-Type': contentType },
+  body,
+});
 
 describe('checker API', () => {
   it('returns lifecycle details and rejects unsupported targets', async () => {
@@ -23,6 +28,42 @@ describe('checker API', () => {
     });
     const invalid = await worker.fetch(request('/api/check', { manifest, targetVersion: '2.1' }), env());
     expect(invalid.status).toBe(400);
+  });
+
+  it.each(['application/yaml', 'application/x-yaml', 'text/yaml', 'text/plain; charset=utf-8'])(
+    'accepts raw manifests with %s and uses the query target', async contentType => {
+      const response = await worker.fetch(rawRequest('/api/check?targetVersion=1.25', manifest, contentType), env());
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        targetVersion: '1.25', mode: 'manifest', scannedResources: 1, removed: 1, warnings: [],
+      });
+    },
+  );
+
+  it('rejects missing or invalid raw manifest targets', async () => {
+    const missing = await worker.fetch(rawRequest('/api/check'), env());
+    expect(missing.status).toBe(400);
+    expect(await missing.json()).toEqual({ error: expect.stringContaining('?targetVersion=1.25') });
+    const invalid = await worker.fetch(rawRequest('/api/check?targetVersion=2.1'), env());
+    expect(invalid.status).toBe(400);
+  });
+
+  it('keeps manifest validation and scan warnings for raw bodies', async () => {
+    const path = '/api/check?targetVersion=1.25';
+    const empty = await worker.fetch(rawRequest(path, ' '), env());
+    expect(empty.status).toBe(400);
+    const oversized = await worker.fetch(rawRequest(path, 'x'.repeat(2 * 1024 * 1024 + 1)), env());
+    expect(oversized.status).toBe(413);
+    const invalid = await worker.fetch(rawRequest(path, 'apiVersion: [unterminated'), env());
+    expect(invalid.status).toBe(200);
+    expect(await invalid.json()).toMatchObject({
+      scannedResources: 0, warnings: [expect.stringContaining('skipped invalid YAML')],
+    });
+  });
+
+  it('does not accept raw bodies for email', async () => {
+    const response = await worker.fetch(rawRequest('/api/email?targetVersion=1.25'), env());
+    expect(response.status).toBe(415);
   });
 
   it('only emails a server-generated summary and rate-limits repeat recipients', async () => {
