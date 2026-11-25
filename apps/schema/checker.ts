@@ -272,9 +272,10 @@ export async function validateManifest(input: string, targetMinor: number, schem
     const definition = schemas.kinds[gvk];
     const crd = crds.get(gvk);
     const issues: Issue[] = candidate.parseErrors.map(message => ({ path: [], message }));
+    let patternOutcomeUnknown = false;
     if (definition) {
       result.schema = 'built-in';
-      issues.push(...validator.validate(value, { $ref: definition }));
+      issues.push(...validator.validate(value, { $ref: definition }).issues);
     } else if (builtinGroups.has(groupOf(apiVersion))) {
       result.schema = 'built-in';
       const range = served[gvk];
@@ -289,8 +290,11 @@ export async function validateManifest(input: string, targetMinor: number, schem
     } else if (crd) {
       result.schema = 'custom resource definition';
       if (!crd.served) issues.push({ path: ['apiVersion'], message: `${apiVersion} is not served by the CustomResourceDefinition in ${crd.source}` });
-      else if (crd.schema) issues.push(...validator.validate(value, crd.schema));
-      else result.notes.push(`The CustomResourceDefinition in ${crd.source} has no schema for ${apiVersion}, so fields are not validated.`);
+      else if (crd.schema) {
+        const validation = validator.validate(value, crd.schema);
+        issues.push(...validation.issues);
+        patternOutcomeUnknown = validation.unknown;
+      } else result.notes.push(`The CustomResourceDefinition in ${crd.source} has no schema for ${apiVersion}, so fields are not validated.`);
       if (crd.rules) result.notes.push(`${crd.rules} x-kubernetes-validations rule${crd.rules === 1 ? '' : 's'} (CEL) were not evaluated.`);
       if (crd.patterns) result.notes.push('Regular-expression patterns from uploaded CustomResourceDefinitions are not evaluated.');
     } else {
@@ -299,7 +303,8 @@ export async function validateManifest(input: string, targetMinor: number, schem
     }
     apiChecks(value, kind, result.schema === 'built-in', issues);
     fail(issues);
-    result.status = result.errors.length ? 'invalid' : 'valid';
+    result.status = result.errors.length ? 'invalid' : patternOutcomeUnknown ? 'skipped' : 'valid';
+    if (result.status === 'skipped') result.notes.push('Validation is incomplete because the result depends on an unevaluated pattern.');
     return result;
   });
   return {

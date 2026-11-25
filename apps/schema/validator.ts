@@ -17,6 +17,7 @@ export interface Schema {
   multipleOf?: number;
   minLength?: number;
   maxLength?: number;
+  skippedPattern?: true;
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
@@ -35,6 +36,11 @@ export type Path = (string | number)[];
 export interface Issue {
   path: Path;
   message: string;
+}
+
+interface Evaluation {
+  issues: Issue[];
+  unknown: boolean;
 }
 
 const quantityRef = 'io.k8s.apimachinery.pkg.api.resource.Quantity';
@@ -71,14 +77,14 @@ function deepEqual(a: unknown, b: unknown, budget: ValidationBudget, depth: numb
 export class Validator {
   constructor(private readonly definitions: Record<string, Schema>, private readonly budget: ValidationBudget) {}
 
-  validate(value: unknown, schema: Schema): Issue[] {
+  validate(value: unknown, schema: Schema): Evaluation {
     return this.evaluate(value, schema, [], 0);
   }
 
-  private evaluate(value: unknown, schema: Schema, path: Path, depth: number): Issue[] {
-    const issues: Issue[] = [];
-    this.check(value, schema, path, issues, depth);
-    return issues;
+  private evaluate(value: unknown, schema: Schema, path: Path, depth: number): Evaluation {
+    const result: Evaluation = { issues: [], unknown: false };
+    this.check(value, schema, path, result, depth);
+    return result;
   }
 
   private resolve(schema: Schema) {
@@ -93,8 +99,9 @@ export class Validator {
     return current;
   }
 
-  private check(value: unknown, input: Schema, path: Path, issues: Issue[], depth: number) {
+  private check(value: unknown, input: Schema, path: Path, result: Evaluation, depth: number) {
     this.budget.use(depth, typeof value === 'string' ? 1 + Math.floor(value.length / 1024) : 1);
+    const { issues } = result;
     if (issues.length >= maxIssues) return;
     const schema = this.resolve(input);
     const add = (message: string, at = path) => { if (issues.length < maxIssues) issues.push({ path: at, message }); };
@@ -104,24 +111,35 @@ export class Validator {
     }
     const actual = typeOf(value);
 
-    for (const sub of schema.allOf ?? []) this.check(value, sub, path, issues, depth + 1);
+    for (const sub of schema.allOf ?? []) this.check(value, sub, path, result, depth + 1);
     for (const [keyword, options] of [['anyOf', schema.anyOf], ['oneOf', schema.oneOf]] as const) {
       if (!options?.length) continue;
       let passing = 0;
+      let unknown = false;
       let closest: Issue[] | undefined;
       for (const option of options) {
-        const result = this.evaluate(value, option, path, depth + 1);
-        if (!result.length) {
+        const branch = this.evaluate(value, option, path, depth + 1);
+        // A checked failure rules out a branch even if it also has an unchecked pattern.
+        if (branch.issues.length) {
+          if (!closest || branch.issues.length < closest.length) closest = branch.issues;
+        } else if (branch.unknown) {
+          unknown = true;
+        } else {
           passing++;
           if (keyword === 'anyOf' || passing > 1) break;
-        } else if (!closest || result.length < closest.length) {
-          closest = result;
         }
       }
       if (keyword === 'oneOf' && passing > 1) add('matches more than one allowed schema (oneOf)');
-      if (!passing && closest) for (const issue of closest) add(issue.message, issue.path);
+      else if (unknown && (keyword === 'oneOf' || !passing)) result.unknown = true;
+      if (!passing && !unknown && closest) for (const issue of closest) add(issue.message, issue.path);
     }
-    if (schema.not && !this.evaluate(value, schema.not, path, depth + 1).length) add('matches a schema it must not match (not)');
+    if (schema.not) {
+      const negated = this.evaluate(value, schema.not, path, depth + 1);
+      if (!negated.issues.length) {
+        if (negated.unknown) result.unknown = true;
+        else add('matches a schema it must not match (not)');
+      }
+    }
 
     if (schema.format === 'int-or-string' || schema['x-kubernetes-int-or-string']) {
       if (actual !== 'integer' && actual !== 'string') return add(`expected integer or string, got ${actual}`);
@@ -138,8 +156,10 @@ export class Validator {
       const choices = schema.enum.slice(0, 10).map(show).join(', ');
       add(`must be one of ${choices}${schema.enum.length > 10 ? ', ...' : ''}; got ${show(value)}`);
     }
-    if (typeof value === 'string') this.checkString(value, schema, add);
-    else if (typeof value === 'number') this.checkNumber(value, schema, add);
+    if (typeof value === 'string') {
+      if (schema.skippedPattern) result.unknown = true;
+      this.checkString(value, schema, add);
+    } else if (typeof value === 'number') this.checkNumber(value, schema, add);
     else if (Array.isArray(value)) {
       if (schema.minItems !== undefined && value.length < schema.minItems) add(`must have at least ${schema.minItems} items`);
       if (schema.maxItems !== undefined && value.length > schema.maxItems) add(`must have at most ${schema.maxItems} items`);
@@ -148,11 +168,11 @@ export class Validator {
       if (schema.items) {
         for (const [i, item] of value.entries()) {
           if (issues.length >= maxIssues) break;
-          this.check(item, schema.items, [...path, i], issues, depth + 1);
+          this.check(item, schema.items, [...path, i], result, depth + 1);
         }
       }
     } else if (actual === 'object') {
-      this.checkObject(value as Record<string, unknown>, schema, path, issues, depth, add);
+      this.checkObject(value as Record<string, unknown>, schema, path, result, depth, add);
     }
   }
 
@@ -175,9 +195,10 @@ export class Validator {
   }
 
   private checkObject(
-    value: Record<string, unknown>, schema: Schema, path: Path, issues: Issue[], depth: number,
+    value: Record<string, unknown>, schema: Schema, path: Path, result: Evaluation, depth: number,
     add: (message: string, at?: Path) => void,
   ) {
+    const { issues } = result;
     const keys = Object.keys(value);
     if (schema.minProperties !== undefined && keys.length < schema.minProperties) add(`must have at least ${schema.minProperties} fields`);
     if (schema.maxProperties !== undefined && keys.length > schema.maxProperties) add(`must have at most ${schema.maxProperties} fields`);
@@ -193,8 +214,8 @@ export class Validator {
       if (issues.length >= maxIssues) break;
       this.budget.use(depth);
       const property = properties && Object.hasOwn(properties, key) ? properties[key] : undefined;
-      if (property) this.check(value[key], property, [...path, key], issues, depth + 1);
-      else if (typeof additionalProperties === 'object') this.check(value[key], additionalProperties, [...path, key], issues, depth + 1);
+      if (property) this.check(value[key], property, [...path, key], result, depth + 1);
+      else if (typeof additionalProperties === 'object') this.check(value[key], additionalProperties, [...path, key], result, depth + 1);
       else if (closed) add(`unknown field "${key}"`, [...path, key]);
     }
   }
@@ -231,7 +252,10 @@ export function fromCrdSchema(input: unknown, budget: ValidationBudget, counter:
     schema.required = source.required.filter((value): value is string => typeof value === 'string');
   }
   if (Array.isArray(source.enum)) schema.enum = source.enum;
-  if (typeof source.pattern === 'string') counter.patterns++;
+  if (typeof source.pattern === 'string') {
+    schema.skippedPattern = true;
+    counter.patterns++;
+  }
   if (Array.isArray(source['x-kubernetes-validations'])) counter.rules += source['x-kubernetes-validations'].length;
   const convert = (value: unknown) => fromCrdSchema(value, budget, counter, depth + 1);
   if (source.properties && typeof source.properties === 'object') {
@@ -241,16 +265,9 @@ export function fromCrdSchema(input: unknown, budget: ValidationBudget, counter:
   if (typeof source.additionalProperties === 'boolean') schema.additionalProperties = source.additionalProperties;
   else if (source.additionalProperties && typeof source.additionalProperties === 'object') schema.additionalProperties = convert(source.additionalProperties);
   for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
-    if (!Array.isArray(source[key])) continue;
-    const patterns = counter.patterns;
-    const options = (source[key] as unknown[]).map(convert);
-    if (key !== 'oneOf' || patterns === counter.patterns) schema[key] = options;
+    if (Array.isArray(source[key])) schema[key] = (source[key] as unknown[]).map(convert);
   }
-  if (source.not) {
-    const patterns = counter.patterns;
-    const negated = convert(source.not);
-    if (patterns === counter.patterns) schema.not = negated;
-  }
+  if (source.not) schema.not = convert(source.not);
   if (schema['x-kubernetes-embedded-resource']) {
     schema.properties = { apiVersion: { type: 'string' }, kind: { type: 'string' }, metadata: { $ref: objectMetaRef }, ...schema.properties };
   }

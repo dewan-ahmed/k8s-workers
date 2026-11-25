@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { validateManifest, type SchemaSet } from './checker';
 import { ValidationBudget } from './limits';
-import { Validator } from './validator';
+import { fromCrdSchema, Validator } from './validator';
 
 const schemas = (minor: number): SchemaSet =>
   JSON.parse(readFileSync(new URL(`./public/schemas/1.${minor}.json`, import.meta.url), 'utf8'));
@@ -131,6 +131,58 @@ metadata: { name: unknown }
     expect(widget.notes[0]).toContain('1 x-kubernetes-validations rule (CEL) were not evaluated');
     expect(widget.notes[1]).toContain('Regular-expression patterns from uploaded CustomResourceDefinitions are not evaluated');
     expect(report.resources[2].notes[0]).toContain('Include the CustomResourceDefinition');
+  });
+
+  it('reports definite CRD failures separately from results that depend on skipped patterns', async () => {
+    const crd = {
+      apiVersion: 'apiextensions.k8s.io/v1', kind: 'CustomResourceDefinition', metadata: { name: 'widgets.example.com' },
+      spec: {
+        group: 'example.com', scope: 'Namespaced', names: { plural: 'widgets', singular: 'widget', kind: 'Widget' },
+        versions: [{
+          name: 'v1', served: true, storage: true,
+          schema: { openAPIV3Schema: { type: 'object', properties: {
+            spec: { type: 'object', properties: {
+              colour: { type: 'string', oneOf: [{ enum: ['blue'], pattern: '^b' }, { enum: ['green'] }] },
+              shade: { type: 'string', not: { anyOf: [{ enum: ['black'] }, { pattern: '^g' }] } },
+            } },
+          } } },
+        }],
+      },
+    };
+    const widget = (name: string, spec: object) => ({
+      apiVersion: 'example.com/v1', kind: 'Widget', metadata: { name }, spec,
+    });
+    const report = await validate([
+      crd, widget('unlisted-colour', { colour: 'red' }), widget('forbidden-shade', { shade: 'black' }),
+      widget('unchecked-colour', { colour: 'blue' }), widget('accepted-colour', { colour: 'green' }),
+    ].map(doc => JSON.stringify(doc)).join('\n---\n'));
+    expect(report).toMatchObject({ valid: 2, invalid: 2, skipped: 1 });
+    expect(report.resources.slice(1)).toMatchObject([
+      { status: 'invalid', errors: [{ path: 'spec.colour', message: expect.stringContaining('must be one of') }] },
+      { status: 'invalid', errors: [{ path: 'spec.shade', message: 'matches a schema it must not match (not)' }] },
+      { status: 'skipped', errors: [], notes: expect.arrayContaining([expect.stringContaining('depends on an unevaluated pattern')]) },
+      { status: 'valid', errors: [] },
+    ]);
+  });
+
+  it('preserves known outcomes around unevaluated patterns in nested CRD rules', () => {
+    const evaluate = (schema: object, value: unknown = 'green') => {
+      const budget = new ValidationBudget();
+      const result = new Validator({}, budget).validate(value, fromCrdSchema(schema, budget, { rules: 0, patterns: 0 }));
+      return result.issues.length ? 'invalid' : result.unknown ? 'skipped' : 'valid';
+    };
+    const pattern = { pattern: '^g' };
+    const matching = { enum: ['green'] };
+    const failing = { enum: ['red'] };
+    expect(evaluate({ anyOf: [pattern, matching] })).toBe('valid');
+    expect(evaluate({ anyOf: [pattern, failing] })).toBe('skipped');
+    expect(evaluate({ oneOf: [pattern, matching] })).toBe('skipped');
+    expect(evaluate({ oneOf: [pattern, matching, matching] })).toBe('invalid');
+    expect(evaluate({ not: { allOf: [pattern, failing] } })).toBe('valid');
+    expect(evaluate({ not: { allOf: [pattern, matching] } })).toBe('skipped');
+    expect(evaluate({ not: { properties: { colours: { items: pattern } } } }, { colours: ['green'] })).toBe('skipped');
+    expect(evaluate({ not: { additionalProperties: pattern } }, { colour: 'green' })).toBe('skipped');
+    expect(evaluate(pattern, 12)).toBe('valid');
   });
 
   it('expands List objects, accepts JSON, and keeps going past invalid YAML documents', async () => {
