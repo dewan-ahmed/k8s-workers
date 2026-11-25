@@ -79,6 +79,7 @@ details ul { margin: .5rem 0 0; padding-left: 1.25rem; }
 .ci-docs p { margin-top: .75rem; }
 .ci-docs pre { overflow-x: auto; background: var(--input); border: 1px solid var(--border); border-radius: .5rem; padding: .75rem; }
 footer { padding-bottom: 2rem; }
+.site-credit { margin-top: .5rem; }
 @media (max-width: 34rem) {
   .panel-heading { align-items: flex-start; flex-direction: column; }
   #checker .panel-heading { gap: .65rem; }
