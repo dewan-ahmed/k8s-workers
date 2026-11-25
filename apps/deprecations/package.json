@@ -1,0 +1,16 @@
+{
+  "name": "@k8s-workers/deprecations",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@k8s-workers/k8s-data": "*",
+    "@k8s-workers/email": "*",
+    "tar-stream": "^3.1.7",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": { "wrangler": "^4.168.0" }
+}

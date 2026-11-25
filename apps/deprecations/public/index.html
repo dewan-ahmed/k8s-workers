@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Check Kubernetes manifests and Helm charts for API removals before you upgrade.">
+  <title>Kubernetes API Deprecations</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <span class="brand"><span class="brand-icon" aria-hidden="true">✦</span> k8s.workers.dev</span>
+      <a href="https://kubernetes.io/docs/reference/using-api/deprecation-guide/">Migration guide ↗</a>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">01 / UPGRADE TOOLS</p>
+      <h1>Kubernetes API<br><span>deprecations</span></h1>
+      <p>Find removed and deprecated APIs before upgrading your cluster. Check manifests, rendered Helm output, or a packaged Helm chart.</p>
+    </section>
+    <form id="checker" class="panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">01 / INPUT</p><h2>Check your resources</h2></div>
+        <label class="version">Target Kubernetes version
+          <select name="targetVersion" id="target" disabled required><option>Loading…</option></select>
+        </label>
+      </div>
+      <fieldset class="mode">
+        <legend class="sr-only">Input type</legend>
+        <label><input type="radio" name="mode" value="manifest" checked><span>Paste YAML</span></label>
+        <label><input type="radio" name="mode" value="chart"><span>Helm archive</span></label>
+      </fieldset>
+      <div id="manifest-pane">
+        <div class="editor-heading"><label for="manifest">Manifest or rendered Helm output</label><button id="example" type="button" class="link-button">Load example</button></div>
+        <textarea id="manifest" name="manifest" rows="11" placeholder="apiVersion: batch/v1beta1&#10;kind: CronJob&#10;metadata:&#10;  name: nightly-cleanup" spellcheck="false" aria-describedby="manifest-help" required></textarea>
+        <p id="manifest-help" class="hint">Multi-document YAML and JSON supported · 2 MiB max · Avoid including secrets</p>
+      </div>
+      <div id="chart-pane" hidden>
+        <label for="chart">Packaged Helm chart (.tgz)</label>
+        <input id="chart" name="chart" type="file" accept=".tgz" aria-describedby="chart-help" disabled required>
+        <p id="chart-help" class="hint">Static scan of literal declarations, not a Helm render. For values-dependent templates, run <code>helm template</code> and paste the output. 2 MiB max.</p>
+      </div>
+      <button id="check" type="submit" class="primary" disabled>Check APIs <span aria-hidden="true">→</span></button>
+      <p id="check-status" class="status" role="status"></p>
+    </form>
+    <section id="report" class="panel" aria-labelledby="results-title" hidden>
+      <div class="panel-heading">
+        <div><p class="eyebrow">02 / RESULTS</p><h2 id="results-title" tabindex="-1">Upgrade report</h2></div>
+        <span id="report-target" class="target-tag"></span>
+      </div>
+      <div class="metrics">
+        <div><strong id="scanned-count"></strong><span>Scanned</span></div>
+        <div><strong id="removed-count"></strong><span>Removed</span></div>
+        <div><strong id="deprecated-count"></strong><span>Deprecated</span></div>
+      </div>
+      <details id="warnings" hidden open><summary id="warning-title"></summary><ul id="warning-list"></ul></details>
+      <p id="empty" class="hint" hidden></p>
+      <div id="findings"></div>
+      <form id="email-form" class="email-form">
+        <label for="recipient">Email a summary</label>
+        <p id="email-hint" class="hint">Sends findings and migration notes, not your raw files. On Workers Free, only verified destinations can receive reports.</p>
+        <div class="email-fields">
+          <input id="recipient" type="email" placeholder="you@example.com" aria-describedby="email-hint" required>
+          <button id="send" type="submit" class="secondary">Send report</button>
+        </div>
+        <p id="email-status" class="status" role="status"></p>
+      </form>
+    </section>
+    <footer>API lifecycle data from the <a href="https://kubernetes.io/docs/reference/using-api/deprecation-guide/">Kubernetes project</a>. This is not a cluster compatibility or schema validator.</footer>
+  </main>
+</body>
+</html>
