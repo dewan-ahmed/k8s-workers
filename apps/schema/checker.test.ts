@@ -224,6 +224,11 @@ metadata: { name: unknown }
       '1900-02-29T00:00:00Z', '2024-04-31T12:00:00Z', '2024-02-29 12:00:00Z']) {
       expect(validator.validate(value, schema).issues).toEqual([{ path: [], message: expect.stringContaining('Kubernetes date-time') }]);
     }
+    const alternative = fromCrdSchema({ type: 'string', oneOf: [{ format }, { enum: ['manual'] }] },
+      budget, { rules: 0, patterns: 0 }, { targetMinor: 36, defaulting: true });
+    expect(validator.validate('manual', alternative)).toEqual({ issues: [], unchecked: Unchecked.None });
+    expect(validator.validate('2025-02-28T12:00:00,5Z', alternative)).toEqual({ issues: [], unchecked: Unchecked.None });
+    expect(validator.validate('2025-02-28T24:00:00Z', alternative).issues).not.toHaveLength(0);
   });
 
   it('uses structural defaults in alternative checks without mutating the input or sharing copies', () => {
